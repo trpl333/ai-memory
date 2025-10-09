@@ -1,0 +1,30 @@
+
+[1;36m(APIServer pid=19)[0;0m     return await anext(self.gen)
+[1;36m(APIServer pid=19)[0;0m            ^^^^^^^^^^^^^^^^^^^^^
+[1;36m(APIServer pid=19)[0;0m   File "/usr/local/lib/python3.12/dist-packages/vllm/entrypoints/openai/api_server.py", line 220, in build_async_engine_client_from_engine_args
+[1;36m(APIServer pid=19)[0;0m     async_llm = AsyncLLM.from_vllm_config(
+[1;36m(APIServer pid=19)[0;0m                 ^^^^^^^^^^^^^^^^^^^^^^^^^^
+[1;36m(APIServer pid=19)[0;0m   File "/usr/local/lib/python3.12/dist-packages/vllm/utils/__init__.py", line 1557, in inner
+[1;36m(APIServer pid=19)[0;0m     return fn(*args, **kwargs)
+[1;36m(APIServer pid=19)[0;0m            ^^^^^^^^^^^^^^^^^^^
+[1;36m(APIServer pid=19)[0;0m   File "/usr/local/lib/python3.12/dist-packages/vllm/v1/engine/async_llm.py", line 174, in from_vllm_config
+[1;36m(APIServer pid=19)[0;0m     return cls(
+[1;36m(APIServer pid=19)[0;0m            ^^^^
+[1;36m(APIServer pid=19)[0;0m   File "/usr/local/lib/python3.12/dist-packages/vllm/v1/engine/async_llm.py", line 120, in __init__
+[1;36m(APIServer pid=19)[0;0m     self.engine_core = EngineCoreClient.make_async_mp_client(
+[1;36m(APIServer pid=19)[0;0m                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[1;36m(APIServer pid=19)[0;0m   File "/usr/local/lib/python3.12/dist-packages/vllm/v1/engine/core_client.py", line 102, in make_async_mp_client
+[1;36m(APIServer pid=19)[0;0m     return AsyncMPClient(*client_args)
+[1;36m(APIServer pid=19)[0;0m            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[1;36m(APIServer pid=19)[0;0m   File "/usr/local/lib/python3.12/dist-packages/vllm/v1/engine/core_client.py", line 767, in __init__
+[1;36m(APIServer pid=19)[0;0m     super().__init__(
+[1;36m(APIServer pid=19)[0;0m   File "/usr/local/lib/python3.12/dist-packages/vllm/v1/engine/core_client.py", line 446, in __init__
+[1;36m(APIServer pid=19)[0;0m     with launch_core_engines(vllm_config, executor_class,
+[1;36m(APIServer pid=19)[0;0m          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+[1;36m(APIServer pid=19)[0;0m   File "/usr/lib/python3.12/contextlib.py", line 144, in __exit__
+[1;36m(APIServer pid=19)[0;0m     next(self.gen)
+[1;36m(APIServer pid=19)[0;0m   File "/usr/local/lib/python3.12/dist-packages/vllm/v1/engine/utils.py", line 706, in launch_core_engines
+[1;36m(APIServer pid=19)[0;0m     wait_for_engine_startup(
+[1;36m(APIServer pid=19)[0;0m   File "/usr/local/lib/python3.12/dist-packages/vllm/v1/engine/utils.py", line 759, in wait_for_engine_startup
+[1;36m(APIServer pid=19)[0;0m     raise RuntimeError("Engine core initialization failed. "
+[1;36m(APIServer pid=19)[0;0m RuntimeError: Engine core initialization failed. See root cause above. Failed core proc(s): {}

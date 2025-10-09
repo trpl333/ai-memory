@@ -1,0 +1,66 @@
+# Critical AI Checklist
+
+## 1. Critical Python Programs / Services
+- `/root/ai-memory/main.py` → AI-Memory Service
+- `/opt/voice-bridge/app.py` → VoiceBridge (Twilio ↔ WebSocket)
+- `/opt/ChatStack/orchestrator.py` → Orchestrator (Gunicorn + FastAPI)
+- `/opt/ChatStack/admin.py` → Admin Panel
+
+## 2. Core Services to Verify
+- **Nginx** → SSL reverse proxy, certbot auto-renew
+- **Orchestrator** → FastAPI/Gunicorn handling chat logic
+- **AI-Memory** → Stores/retrieves memory, logs interactions
+- **VoiceBridge** → WebSocket bridge for Twilio audio streams
+- **LLM Endpoint** → RunPod (Qwen/Mistral/Falcon) availability
+- **ElevenLabs TTS** → API reachable
+
+## 3. Admin Panel
+- Accessible at: `http://<server-ip>:5000/admin`
+- Configurable items:
+  - ElevenLabs voice ID
+  - Greeting for new vs returning callers
+  - Upload/ingest knowledge base (TXT/PDF)
+
+## 4. Key Config Files
+- `config.json` → API keys, base URLs, model configs
+- `requirements.txt` → Python dependencies
+- `nginx.conf` → Reverse proxy setup
+- `orchestrator.service` → Systemd service file for orchestrator
+- `ai-memory.service` → Systemd service file for AI-Memory
+- `voice-bridge.service` → Systemd service file for VoiceBridge
+
+## 5. Helper Scripts
+- `fix_llm_config.sh` → Repairs broken LLM config
+- `reload_nginx.sh` → Reloads Nginx after edits
+- `restart_services.sh` → Restart orchestrator, ai-memory, voice-bridge
+
+## 6. External Service Checks
+- **Twilio**: Verify incoming/outgoing calls route correctly
+- **OpenAI / RunPod**: Endpoint live, API responding
+- **ElevenLabs**: Voice responses generate in real time
+- **DigitalOcean Droplet**: System uptime, firewall, port access
+- **SSL Certificates**: Renewed and valid (letsencrypt certbot)
+
+## 7. App Modules
+- `routes/phone/incoming.py` → Handles Twilio inbound
+- `routes/phone/outgoing.py` → Outbound dialer logic
+- `routes/memory.py` → Save/retrieve long-term memory
+- `routes/admin.py` → Admin panel routes
+
+## 8. What’s Missing (Add-ons)
+- Twilio credentials check (`.env` values)
+- Postgres health check (AI-Memory DB)
+- Certbot renewal test (`systemctl status certbot`)
+- Log monitoring (`journalctl -u orchestrator -n 100`)
+
+## 9. Suggested Add-ons
+- API key validity script for Twilio, OpenAI, ElevenLabs
+- DB schema migrations log
+- Automated backup for Postgres
+- Alert system for service crash/restart
+
+---
+**Reminder:** Always run `systemctl status <service>` to confirm:
+- `orchestrator.service`
+- `ai-memory.service`
+- `voice-bridge.service`

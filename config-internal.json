@@ -1,0 +1,30 @@
+{
+  "comment": "Internal infrastructure config for NeuroSphere Orchestrator",
+  "comment_purpose": "This file is for operator/developer reference only. It documents internal URLs, ports, and service mappings. Do NOT expose to Twilio or external clients.",
+
+  "flask_internal_url": "http://127.0.0.1:5000",
+  "flask_internal_description": "Local-only Flask/Orchestrator binding. Nginx proxies public traffic here.",
+
+  "fastapi_backend_url": "http://127.0.0.1:8001",
+  "fastapi_backend_description": "Local-only FastAPI backend (memory + chat APIs). Started by main.py in background thread.",
+
+  "nginx_proxy_notes": "Nginx proxies https://voice.theinsurancedoctors.com -> http://127.0.0.1:5000",
+  
+  "service_names": {
+    "orchestrator": "voice-bridge.service",
+    "memory": "ai-memory.service"
+  },
+
+  "critical_ports": {
+    "ssh": 22,
+    "http": 80,
+    "https": 443,
+    "flask_orchestrator": 5000,
+    "fastapi_backend": 8001,
+    "ai_memory": 8100,
+    "voice_bridge": 9100
+  },
+
+  "last_updated": "2025-09-11",
+  "last_updated_description": "Date this internal config was last updated"
+}

@@ -1,0 +1,63 @@
+# Environment and secrets
+.env
+*.env
+.env.local
+.env.production
+
+# SSL certificates
+*.pem
+*.key
+*.p12
+*.crt
+ssl/
+
+# Configuration files
+*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Logs
+*.log
+logs/
+
+# Media/temp files
+attached_assets/
+static/*.mp3
+temp/
+tmp/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Database
+*.db
+*.sqlite3
+database/

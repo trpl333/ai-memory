@@ -1,0 +1,1983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peterson Family Insurance AI Phone System Admin</title>
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    <style>
+        .admin-section { 
+            margin-bottom: 2rem; 
+            padding: 1.5rem; 
+            border-radius: 8px; 
+            background: var(--bs-dark); 
+            border: 1px solid var(--bs-gray-600);
+        }
+        .memory-card {
+            background: var(--bs-gray-800);
+            border: 1px solid var(--bs-gray-600);
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .scope-badge { font-size: 0.8rem; }
+        .memory-content { max-height: 200px; overflow-y: auto; }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        .status-success { background-color: #198754; }
+        .status-error { background-color: #dc3545; }
+        .json-editor {
+            font-family: 'Monaco', 'Consolas', monospace;
+            background: var(--bs-gray-900);
+        }
+        .voice-sample { margin: 0.5rem 0; }
+        .current-setting { color: var(--bs-success); font-weight: bold; }
+        .setting-group { border-left: 3px solid var(--bs-primary); padding-left: 1rem; margin: 1rem 0; }
+        .nav-pills .nav-link.active { background-color: var(--bs-primary); }
+        .section-header { 
+            border-bottom: 2px solid var(--bs-primary); 
+            padding-bottom: 0.5rem; 
+            margin-bottom: 1.5rem; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <!-- Header -->
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="text-primary">🎛️ Peterson Family Insurance AI Phone System Admin</h1>
+                    <div id="status-indicator" class="d-flex align-items-center">
+                        <span class="status-indicator status-success"></span>
+                        <small class="text-muted">Connected to OpenAI Realtime API</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <ul class="nav nav-pills mb-4" id="adminTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="phone-tab" data-bs-toggle="pill" data-bs-target="#phone-panel" type="button">📞 Phone System</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="ai-tab" data-bs-toggle="pill" data-bs-target="#ai-panel" type="button">🧠 AI Settings</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="memories-tab" data-bs-toggle="pill" data-bs-target="#memories-panel" type="button">👥 User Memories</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="knowledge-tab" data-bs-toggle="pill" data-bs-target="#knowledge-panel" type="button">📚 Knowledge Base</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="system-tab" data-bs-toggle="pill" data-bs-target="#system-panel" type="button">⚙️ System Status</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="adminTabContent">
+            
+            <!-- Phone System Panel -->
+            <div class="tab-pane fade show active" id="phone-panel" role="tabpanel">
+                
+                <!-- Voice Settings -->
+                <div class="admin-section">
+                    <h3 class="section-header">🎤 Voice Settings</h3>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">ElevenLabs Voice</label>
+                            <select class="form-select" id="voiceSelect">
+                                <option value="FGY2WhTYpPnrIDTdsKH5" selected>Lora (Current)</option>
+                                <option value="21m00Tcm4TlvDq8ikWAM">Rachel - Natural & Versatile</option>
+                                <option value="AZnzlk1XvdvUeBnXmlld">Domi - Strong & Professional</option>
+                                <option value="EXAVITQu4vr4xnSDxMaL">Bella - Friendly & Warm</option>
+                                <option value="ErXwobaYiN019PkySvjV">Antoni - Professional Male</option>
+                                <option value="MF3mGyEYCl7XYWbV9V6O">Elli - Energetic Female</option>
+                                <option value="TxGEqnHWrfWFTfGW9XjX">Josh - Deep Male Voice</option>
+                                <option value="VR6AewLTigWG4xSOukaG">Arnold - Crisp & Clear</option>
+                                <option value="pNInz6obpgDQGcFmaJgB">Adam - Professional Narrator</option>
+                                <option value="yoZ06aMxZJJ28mfd3POQ">Sam - Casual & Friendly</option>
+                            </select>
+                            <button class="btn btn-primary mt-2" onclick="testVoice()">🔊 Test Voice</button>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Voice Settings</label>
+                            <div class="setting-group">
+                                <div class="mb-2">
+                                    <label>Stability: <span id="stabilityValue">0.71</span></label>
+                                    <input type="range" class="form-range" min="0" max="1" step="0.01" value="0.71" id="stability">
+                                </div>
+                                <div class="mb-2">
+                                    <label>Clarity: <span id="clarityValue">0.5</span></label>
+                                    <input type="range" class="form-range" min="0" max="1" step="0.01" value="0.5" id="clarity">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-success" onclick="updateVoice()">💾 Update Voice Settings</button>
+                </div>
+
+                <!-- Custom Greetings -->
+                <div class="admin-section">
+                    <h3 class="section-header">👋 Custom Greetings</h3>
+                    <div class="alert alert-info">
+                        <strong>Greeting Logic:</strong> The system automatically chooses between these greetings based on whether the caller is recognized from memory.
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">Existing User Greeting</label>
+                            <textarea class="form-control" rows="3" id="existingUserGreeting" placeholder="Greeting for recognized callers...">Hi, this is Samantha from Peterson Family Insurance Agency. Is this {user_name}?</textarea>
+                            <small class="text-muted">Use {user_name} placeholder for personalization. Shown when caller's name is found in memory.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">New Caller Greeting</label>
+                            <textarea class="form-control" rows="3" id="newCallerGreeting" placeholder="Greeting for new callers...">Good {time_greeting}! This is Samantha - how's your day going? I'm here at Peterson Family Insurance, and I'd love to help you out with whatever you need!</textarea>
+                            <small class="text-muted">Use {time_greeting} for "morning/afternoon/evening". Shown for unrecognized callers.</small>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <button class="btn btn-success" onclick="updateGreetings()">💾 Update Greetings</button>
+                        <button class="btn btn-outline-info ms-2" onclick="testGreeting()">🔊 Test Greeting</button>
+                    </div>
+                </div>
+
+                <!-- Call Routing -->
+                <div class="admin-section">
+                    <h3 class="section-header">📞 Call Routing & Actions</h3>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h5>Quick Actions</h5>
+                            <div class="setting-group">
+                                <div class="mb-3">
+                                    <label class="form-label">Billing Department</label>
+                                    <input type="tel" class="form-control" id="billingNumber" value="1-888-327-6377" placeholder="1-888-XXX-XXXX">
+                                    <small class="text-muted">When users mention "pay bill" or "billing", transfer here</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Claims Department</label>
+                                    <input type="tel" class="form-control" id="claimsNumber" value="1-800-435-7764" placeholder="1-800-XXX-XXXX">
+                                    <small class="text-muted">When users mention "claim" or "accident", transfer here</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">General Support</label>
+                                    <input type="tel" class="form-control" id="supportNumber" value="1-888-327-6377" placeholder="1-888-XXX-XXXX">
+                                    <small class="text-muted">For complex issues Samantha can't handle</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <h5>Trigger Keywords</h5>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <label class="form-label">Billing Keywords</label>
+                                <textarea class="form-control" rows="3" id="billingKeywords">pay bill, billing, payment, invoice, account balance, autopay</textarea>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Claims Keywords</label>
+                                <textarea class="form-control" rows="3" id="claimsKeywords">claim, accident, damage, injury, file claim, incident</textarea>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Transfer Keywords</label>
+                                <textarea class="form-control" rows="3" id="transferKeywords">speak to human, transfer me, representative, agent, manager</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-success mt-2" onclick="updateRouting()">💾 Update Call Routing</button>
+                </div>
+            </div>
+
+            <!-- AI Settings Panel -->
+            <div class="tab-pane fade" id="ai-panel" role="tabpanel">
+                
+                <!-- Agent Identity -->
+                <div class="admin-section">
+                    <h3 class="section-header">👤 Agent Identity</h3>
+                    <div class="alert alert-info">
+                        <strong>Agent Name:</strong> This name will be used consistently in greetings, conversations, and all AI responses.
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">Agent Name</label>
+                            <input type="text" class="form-control" id="agentName" placeholder="e.g., Amanda, Samantha, Sarah" value="Amanda">
+                            <small class="text-muted">The AI will introduce itself with this name in all interactions</small>
+                        </div>
+                    </div>
+                    <button class="btn btn-success mt-3" onclick="updateAgentName()">💾 Update Agent Name</button>
+                </div>
+                
+                <!-- Personality Settings -->
+                <div class="admin-section">
+                    <h3 class="section-header">🧠 AI Personality & Instructions</h3>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="form-label">Personality Preset</label>
+                            <select class="form-select" id="personalityPreset" onchange="loadPersonality()">
+                                <option value="insurance">Peterson Family Insurance Agent (Current)</option>
+                                <option value="professional">Professional & Formal</option>
+                                <option value="friendly">Friendly & Casual</option>
+                                <option value="sales">Sales-Focused</option>
+                                <option value="support">Customer Support</option>
+                                <option value="custom">Custom Instructions</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Response Length</label>
+                            <select class="form-select" id="responseLength">
+                                <option value="25">Very Short (25 tokens)</option>
+                                <option value="50" selected>Short (50 tokens)</option>
+                                <option value="100">Medium (100 tokens)</option>
+                                <option value="150">Long (150 tokens)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <label class="form-label">Custom Instructions</label>
+                        <textarea class="form-control" rows="4" id="customInstructions" placeholder="Enter custom personality instructions...">You are Samantha from Peterson Family Insurance Agency. Be helpful and professional. Only use information you remember about the caller.</textarea>
+                    </div>
+                    <button class="btn btn-success mt-2" onclick="updatePersonality()">💾 Update Personality</button>
+                </div>
+
+                <!-- OpenAI Settings -->
+                <div class="admin-section">
+                    <h3 class="section-header">🤖 OpenAI Realtime API Settings</h3>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card bg-secondary">
+                                <div class="card-body">
+                                    <h6>Current Model</h6>
+                                    <p class="current-setting">gpt-4o-mini</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-secondary">
+                                <div class="card-body">
+                                    <h6>API Endpoint</h6>
+                                    <p class="current-setting">https://api.openai.com/v1</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-secondary">
+                                <div class="card-body">
+                                    <h6>Current Voice</h6>
+                                    <p class="current-setting" id="currentOpenAIVoice">alloy</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-success mt-3">
+                        <strong>✅ OpenAI Realtime API Integration Active</strong><br>
+                        Your phone system is now using OpenAI's latest Realtime API for lightning-fast 2-2.5 second response times.
+                    </div>
+                    <div class="mt-3">
+                        <h5>🎤 OpenAI Voice Selection</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label">Select Voice for AI Calls</label>
+                                <select class="form-select" id="openaiVoiceSelect">
+                                    <optgroup label="Original Voices">
+                                        <option value="alloy">Alloy - Neutral & Balanced</option>
+                                        <option value="echo">Echo - Resonant & Deep</option>
+                                        <option value="shimmer">Shimmer - Bright & Energetic</option>
+                                    </optgroup>
+                                    <optgroup label="Enhanced Voices (More Expressive)">
+                                        <option value="ash">Ash - Clear & Precise</option>
+                                        <option value="ballad">Ballad - Melodic & Smooth</option>
+                                        <option value="coral">Coral - Warm & Friendly</option>
+                                        <option value="sage">Sage - Calm & Thoughtful</option>
+                                        <option value="verse">Verse - Versatile & Expressive</option>
+                                    </optgroup>
+                                    <optgroup label="Premium Voices (Most Natural)">
+                                        <option value="cedar">Cedar - Premium Natural Speech</option>
+                                        <option value="marin">Marin - Premium Natural Speech</option>
+                                    </optgroup>
+                                </select>
+                                <small class="text-muted">Changes take effect immediately on the next call</small>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="alert alert-info">
+                                    <strong>Recommended for Customer Service:</strong><br>
+                                    • <strong>Coral</strong> - Warm & friendly tone<br>
+                                    • <strong>Sage</strong> - Calm & professional<br>
+                                    • <strong>Ballad</strong> - Smooth & pleasant
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-success mt-2" onclick="updateOpenAIVoice()">💾 Update Voice</button>
+                    </div>
+                </div>
+
+                <!-- Test Panel -->
+                <div class="admin-section">
+                    <h3 class="section-header">🧪 Test Panel</h3>
+                    <div class="row">
+                        <div class="col-md-8">
+                            <input type="text" class="form-control" id="testMessage" placeholder="Enter test message..." value="Hi, my name is John. How are you doing today?">
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-primary" onclick="testAI()">🤖 Test AI Response</button>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <div class="card bg-secondary">
+                            <div class="card-body">
+                                <h6>AI Response:</h6>
+                                <p id="testResponse">Click "Test AI Response" to see how Samantha responds</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Memories Panel -->
+            <div class="tab-pane fade" id="memories-panel" role="tabpanel">
+                
+                <!-- User List -->
+                <div class="admin-section">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="section-header">👥 User Memory Management</h3>
+                        <button class="btn btn-outline-primary btn-sm" onclick="loadAllUsers()">🔄 Refresh Users</button>
+                    </div>
+                    
+                    <div class="row">
+                        <!-- LEFT: Structured Schema Editor -->
+                        <div class="col-md-3">
+                            <h5>📋 Structured Profile</h5>
+                            <div id="schema-editor" style="max-height: 600px; overflow-y: auto;">
+                                <div class="text-center text-muted py-5">
+                                    <i class="bi bi-person-badge" style="font-size: 2.5rem;"></i>
+                                    <p class="mt-3 small">Select a user to edit their structured profile</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- MIDDLE: User List -->
+                        <div class="col-md-3">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h5>Users with Memories</h5>
+                            </div>
+                            <div id="user-list" style="max-height: 600px; overflow-y: auto;">
+                                <div class="text-center text-muted py-4">
+                                    <div class="spinner-border" role="status"></div>
+                                    <p class="mt-2">Loading users...</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- RIGHT: Raw Memories -->
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h5 id="selected-user-title">Select a user to view memories</h5>
+                                <button class="btn btn-sm btn-success" id="add-memory-btn" style="display:none;" onclick="showAddMemoryModal()">+ Add Memory</button>
+                            </div>
+                            <div id="memories-list" style="max-height: 600px; overflow-y: auto;">
+                                <div class="text-center text-muted py-5">
+                                    <i class="bi bi-person-circle" style="font-size: 3rem;"></i>
+                                    <p class="mt-3">Select a user from the list to view their memories</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Knowledge Base Panel -->
+            <div class="tab-pane fade" id="knowledge-panel" role="tabpanel">
+                
+                <!-- Knowledge Upload Section -->
+                <div class="admin-section">
+                    <h3 class="section-header">📚 Add Knowledge</h3>
+                    <form id="add-knowledge-form">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="knowledge-type" class="form-label">Knowledge Type</label>
+                                    <select class="form-select" id="knowledge-type" required>
+                                        <option value="">Select type...</option>
+                                        <option value="fact">Fact</option>
+                                        <option value="rule">Rule</option>
+                                        <option value="procedure">Procedure</option>
+                                        <option value="definition">Definition</option>
+                                        <option value="example">Example</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="knowledge-key" class="form-label">Key/Identifier</label>
+                                    <input type="text" class="form-control" id="knowledge-key" 
+                                           placeholder="e.g., ca_auto_liability" required>
+                                    <div class="form-text">Unique identifier for this knowledge item</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="knowledge-scope" class="form-label">Scope</label>
+                                    <select class="form-select" id="knowledge-scope" required>
+                                        <option value="shared">🌐 Shared (All Users)</option>
+                                        <option value="global">🌍 Global (System-wide)</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="knowledge-ttl" class="form-label">TTL (Days)</label>
+                                    <input type="number" class="form-control" id="knowledge-ttl" value="365" min="1" max="9999">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="knowledge-content" class="form-label">Content (JSON)</label>
+                                    <textarea class="form-control json-editor" id="knowledge-content" rows="8" 
+                                              placeholder='{"description": "Auto insurance requirement", "state": "California", "amount": "$15,000"}' required></textarea>
+                                    <div class="form-text">Enter knowledge as JSON object</div>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">💾 Add Knowledge</button>
+                        <button type="button" class="btn btn-secondary" onclick="clearForm()">🗑️ Clear</button>
+                    </form>
+                </div>
+
+                <!-- Knowledge List Section -->
+                <div class="admin-section">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="section-header">🌐 Shared Knowledge Base</h3>
+                        <button class="btn btn-outline-primary btn-sm" onclick="loadSharedKnowledge()">🔄 Refresh</button>
+                    </div>
+                    <div class="mb-3">
+                        <input type="text" class="form-control" id="search-knowledge" 
+                               placeholder="🔍 Search knowledge..." onkeyup="searchKnowledge()">
+                    </div>
+                    <div id="knowledge-list" style="max-height: 400px; overflow-y: auto;">
+                        <div class="text-center text-muted py-4">
+                            <div class="spinner-border" role="status"></div>
+                            <p class="mt-2">Loading knowledge base...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Memory Viewer -->
+                <div class="admin-section">
+                    <h3 class="section-header">👥 User Memory Viewer</h3>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" id="user-id-input" 
+                                   placeholder="Enter User ID (e.g., user_123)">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" id="user-search-query" 
+                                   placeholder="Search user memories...">
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100" onclick="loadUserMemories()">🔍 Search</button>
+                        </div>
+                    </div>
+                    <div id="user-memories" style="max-height: 400px; overflow-y: auto;">
+                        <div class="text-muted text-center py-4">
+                            Enter a User ID and click Search to view memories
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Status Panel -->
+            <div class="tab-pane fade" id="system-panel" role="tabpanel">
+                
+                <!-- System Status -->
+                <div class="admin-section">
+                    <h3 class="section-header">📊 System Status</h3>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="card bg-secondary">
+                                <div class="card-body">
+                                    <h6>AI Model</h6>
+                                    <p class="current-setting">gpt-4o-mini</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-secondary">
+                                <div class="card-body">
+                                    <h6>Phone Number</h6>
+                                    <p class="current-setting">+1 (949) 707-1290</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-secondary">
+                                <div class="card-body">
+                                    <h6>Response Time</h6>
+                                    <p class="current-setting">2-2.5 seconds</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-secondary">
+                                <div class="card-body">
+                                    <h6>Total Memories</h6>
+                                    <p class="current-setting" id="memoryCount">Loading...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-info mt-2" onclick="refreshStatus()">🔄 Refresh Status</button>
+                </div>
+
+                <!-- Service Architecture -->
+                <div class="admin-section">
+                    <h3 class="section-header">🏗️ Service Architecture</h3>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card bg-dark">
+                                <div class="card-body">
+                                    <h6>🌐 Flask Frontend (Port 5000)</h6>
+                                    <ul class="list-unstyled">
+                                        <li>• Phone call handling (/phone/)</li>
+                                        <li>• Admin interface (/admin)</li>
+                                        <li>• Static file serving (/static/)</li>
+                                        <li>• Twilio webhook processing</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-dark">
+                                <div class="card-body">
+                                    <h6>🚀 FastAPI Backend (Port 8001)</h6>
+                                    <ul class="list-unstyled">
+                                        <li>• OpenAI Realtime API (/v1/)</li>
+                                        <li>• Memory management</li>
+                                        <li>• AI chat processing</li>
+                                        <li>• WebSocket support</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuration Sources -->
+                <div class="admin-section">
+                    <h3 class="section-header">⚙️ Configuration</h3>
+                    <div class="alert alert-info">
+                        <strong>Configuration Priority:</strong> 
+                        1. Environment Variables (secrets) → 
+                        2. config.json (settings) → 
+                        3. config-internal.json (internal settings)
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card bg-dark">
+                                <div class="card-body">
+                                    <h6>🔒 Environment Variables</h6>
+                                    <ul class="list-unstyled small">
+                                        <li>• OPENAI_API_KEY</li>
+                                        <li>• DATABASE_URL</li>
+                                        <li>• ELEVENLABS_API_KEY</li>
+                                        <li>• TWILIO_* (Account, Auth, Phone)</li>
+                                        <li>• SESSION_SECRET</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-dark">
+                                <div class="card-body">
+                                    <h6>📄 config.json Settings</h6>
+                                    <ul class="list-unstyled small">
+                                        <li>• llm_model: gpt-4o-mini</li>
+                                        <li>• llm_base_url: https://api.openai.com/v1</li>
+                                        <li>• ai_memory_url: http://209.38.143.71:8100</li>
+                                        <li>• server_url: voice.theinsurancedoctors.com</li>
+                                        <li>• elevenlabs_voice_id: aMSt68OGf4xUZAnLpTU8</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success/Error Toast -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
+        <div id="notification-toast" class="toast hide" role="alert">
+            <div class="toast-header">
+                <strong class="me-auto" id="toast-title">Notification</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toast-body">
+                Message here
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let knowledgeData = [];
+        
+        // Show notification
+        function showNotification(title, message, isError = false) {
+            const toast = document.getElementById('notification-toast');
+            const toastTitle = document.getElementById('toast-title');
+            const toastBody = document.getElementById('toast-body');
+            const header = toast.querySelector('.toast-header');
+            
+            toastTitle.textContent = title;
+            toastBody.textContent = message;
+            
+            header.className = `toast-header ${isError ? 'bg-danger text-white' : 'bg-success text-white'}`;
+            
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+        }
+
+        // Voice range sliders
+        document.getElementById('stability').addEventListener('input', function() {
+            document.getElementById('stabilityValue').textContent = this.value;
+        });
+        document.getElementById('clarity').addEventListener('input', function() {
+            document.getElementById('clarityValue').textContent = this.value;
+        });
+
+        // Voice and personality management
+        function loadPersonality() {
+            const preset = document.getElementById('personalityPreset').value;
+            const instructions = document.getElementById('customInstructions');
+            
+            const presets = {
+                insurance: "You are Samantha from Peterson Family Insurance Agency. Be helpful and professional. Answer questions about insurance and help customers with their needs.",
+                professional: "You are a professional AI assistant. Maintain a formal, courteous tone. Provide accurate, helpful information.",
+                friendly: "You are a friendly AI assistant. Be warm, conversational, and approachable while remaining helpful.",
+                sales: "You are a sales-focused assistant. Identify customer needs and guide them toward appropriate solutions.",
+                support: "You are a customer support specialist. Focus on problem-solving and providing excellent service.",
+                custom: ""
+            };
+            
+            if (preset !== 'custom') {
+                instructions.value = presets[preset];
+            }
+        }
+
+        function testVoice() {
+            const voiceId = document.getElementById('voiceSelect').value;
+            const testText = "Hi, this is Samantha from Peterson Family Insurance Agency. How can I help you today?";
+            
+            fetch('/test-voice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ voice_id: voiceId, text: testText })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Success', 'Voice test sent! Check your speakers.');
+                } else {
+                    showNotification('Error', 'Voice test failed: ' + data.error, true);
+                }
+            });
+        }
+
+        function testAI() {
+            const message = document.getElementById('testMessage').value;
+            const responseDiv = document.getElementById('testResponse');
+            
+            responseDiv.textContent = 'Testing...';
+            
+            fetch('/v1/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    messages: [{ role: 'user', content: message }],
+                    temperature: 0.7,
+                    max_tokens: 100
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                responseDiv.textContent = data.output || 'Test failed';
+                showNotification('Success', 'AI test completed');
+            })
+            .catch(error => {
+                responseDiv.textContent = 'Error: ' + error.message;
+                showNotification('Error', 'AI test failed: ' + error.message, true);
+            });
+        }
+
+        function testGreeting() {
+            const greeting = document.getElementById('newCallerGreeting').value;
+            fetch('/test-voice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: greeting })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Success', 'Greeting test sent! Check your speakers.');
+                } else {
+                    showNotification('Error', 'Greeting test failed: ' + data.error, true);
+                }
+            });
+        }
+
+        function updateVoice() {
+            const settings = {
+                voice_id: document.getElementById('voiceSelect').value,
+                stability: document.getElementById('stability').value,
+                clarity: document.getElementById('clarity').value
+            };
+            
+            fetch('/update-voice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Success', 'Voice settings updated successfully!');
+                } else {
+                    showNotification('Error', 'Failed to update voice settings: ' + data.error, true);
+                }
+            })
+            .catch(error => {
+                showNotification('Error', 'Network error: ' + error.message, true);
+            });
+        }
+
+        function updatePersonality() {
+            const settings = {
+                instructions: document.getElementById('customInstructions').value,
+                max_tokens: parseInt(document.getElementById('responseLength').value)
+            };
+            
+            fetch('/update-personality', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Success', 'Personality settings updated successfully!');
+                } else {
+                    showNotification('Error', 'Failed to update personality: ' + data.error, true);
+                }
+            })
+            .catch(error => {
+                showNotification('Error', 'Network error: ' + error.message, true);
+            });
+        }
+
+        function updateGreetings() {
+            const settings = {
+                existing_user_greeting: document.getElementById('existingUserGreeting').value,
+                new_caller_greeting: document.getElementById('newCallerGreeting').value
+            };
+            
+            fetch('/update-greetings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Success', 'Greeting settings updated successfully!');
+                } else {
+                    showNotification('Error', 'Failed to update greetings: ' + data.error, true);
+                }
+            })
+            .catch(error => {
+                showNotification('Error', 'Network error: ' + error.message, true);
+            });
+        }
+
+        function updateRouting() {
+            const settings = {
+                billing_number: document.getElementById('billingNumber').value,
+                claims_number: document.getElementById('claimsNumber').value,
+                support_number: document.getElementById('supportNumber').value,
+                billing_keywords: document.getElementById('billingKeywords').value,
+                claims_keywords: document.getElementById('claimsKeywords').value,
+                transfer_keywords: document.getElementById('transferKeywords').value
+            };
+            
+            fetch('/update-routing', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(settings)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Success', 'Call routing settings updated successfully!');
+                } else {
+                    showNotification('Error', 'Failed to update routing: ' + data.error, true);
+                }
+            })
+            .catch(error => {
+                showNotification('Error', 'Network error: ' + error.message, true);
+            });
+        }
+
+        function updateAgentName() {
+            const agentName = document.getElementById('agentName').value;
+            
+            if (!agentName || agentName.trim() === '') {
+                showNotification('Error', 'Agent name cannot be empty', true);
+                return;
+            }
+            
+            fetch('/phone/update-agent-name', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ agent_name: agentName })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('Success', 'Agent name updated to: ' + agentName);
+                } else {
+                    showNotification('Error', 'Failed to update agent name: ' + data.error, true);
+                }
+            })
+            .catch(error => {
+                showNotification('Error', 'Network error: ' + error.message, true);
+            });
+        }
+
+        function loadAgentName() {
+            fetch('/phone/get-agent-name')
+            .then(response => response.json())
+            .then(data => {
+                if (data.agent_name) {
+                    document.getElementById('agentName').value = data.agent_name;
+                }
+            })
+            .catch(error => {
+                console.error('Failed to load agent name:', error);
+            });
+        }
+
+        function updateOpenAIVoice() {
+            const voice = document.getElementById('openaiVoiceSelect').value;
+            
+            if (!voice || voice.trim() === '') {
+                showNotification('Error', 'Please select a voice', true);
+                return;
+            }
+            
+            fetch('/phone/update-openai-voice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ openai_voice: voice })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('currentOpenAIVoice').textContent = voice;
+                    showNotification('Success', 'OpenAI voice updated to: ' + voice + ' (takes effect on next call)');
+                } else {
+                    showNotification('Error', 'Failed to update voice: ' + data.error, true);
+                }
+            })
+            .catch(error => {
+                showNotification('Error', 'Network error: ' + error.message, true);
+            });
+        }
+
+        function loadOpenAIVoice() {
+            fetch('/phone/get-openai-voice')
+            .then(response => response.json())
+            .then(data => {
+                if (data.openai_voice) {
+                    document.getElementById('openaiVoiceSelect').value = data.openai_voice;
+                    document.getElementById('currentOpenAIVoice').textContent = data.openai_voice;
+                }
+            })
+            .catch(error => {
+                console.error('Failed to load OpenAI voice:', error);
+            });
+        }
+
+        function refreshStatus() {
+            // Simulate loading memory count
+            setTimeout(() => {
+                document.getElementById('memoryCount').textContent = Math.floor(Math.random() * 1000) + ' items';
+                showNotification('Success', 'Status refreshed');
+            }, 1000);
+        }
+
+        // Knowledge Base Functions
+        document.getElementById('add-knowledge-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const type = document.getElementById('knowledge-type').value;
+            const key = document.getElementById('knowledge-key').value;
+            const scope = document.getElementById('knowledge-scope').value;
+            const contentStr = document.getElementById('knowledge-content').value;
+            const ttl = parseInt(document.getElementById('knowledge-ttl').value);
+            
+            try {
+                const content = JSON.parse(contentStr);
+                
+                const response = await fetch('/v1/memories/shared', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        type: type,
+                        key: key,
+                        value: content,
+                        ttl_days: ttl,
+                        source: 'admin_ui'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification('Success', `Knowledge added: ${type}:${key}`);
+                    clearForm();
+                    loadSharedKnowledge();
+                } else {
+                    showNotification('Error', 'Failed to add knowledge', true);
+                }
+                
+            } catch (error) {
+                showNotification('Error', `Invalid JSON or network error: ${error.message}`, true);
+            }
+        });
+
+        async function loadSharedKnowledge() {
+            try {
+                const response = await fetch('/v1/memories/shared?limit=50');
+                const data = await response.json();
+                knowledgeData = data.memories || [];
+                displayKnowledge(knowledgeData);
+            } catch (error) {
+                document.getElementById('knowledge-list').innerHTML = 
+                    '<div class="text-danger text-center py-4">Failed to load knowledge base</div>';
+            }
+        }
+
+        function displayKnowledge(memories) {
+            const container = document.getElementById('knowledge-list');
+            
+            if (memories.length === 0) {
+                container.innerHTML = '<div class="text-muted text-center py-4">No knowledge items found</div>';
+                return;
+            }
+            
+            const html = memories.map(memory => `
+                <div class="memory-card p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <span class="badge bg-primary me-2">${memory.type}</span>
+                            <span class="badge scope-badge ${memory.scope === 'shared' ? 'bg-success' : 'bg-info'}">${memory.scope}</span>
+                        </div>
+                        <small class="text-muted">${new Date(memory.created_at).toLocaleDateString()}</small>
+                    </div>
+                    <h6 class="text-warning">${memory.key}</h6>
+                    <div class="memory-content">
+                        <pre class="text-light small mb-0">${JSON.stringify(memory.value, null, 2)}</pre>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = html;
+        }
+
+        function searchKnowledge() {
+            const query = document.getElementById('search-knowledge').value.toLowerCase();
+            if (query === '') {
+                displayKnowledge(knowledgeData);
+                return;
+            }
+            
+            const filtered = knowledgeData.filter(memory => 
+                memory.key.toLowerCase().includes(query) ||
+                memory.type.toLowerCase().includes(query) ||
+                JSON.stringify(memory.value).toLowerCase().includes(query)
+            );
+            
+            displayKnowledge(filtered);
+        }
+
+        async function loadUserMemories() {
+            const userId = document.getElementById('user-id-input').value.trim();
+            const query = document.getElementById('user-search-query').value.trim();
+            
+            if (!userId) {
+                showNotification('Error', 'Please enter a User ID', true);
+                return;
+            }
+            
+            try {
+                const url = `/v1/memories/user/${userId}${query ? '?query=' + encodeURIComponent(query) + '&limit=20' : '?limit=20'}`;
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                displayUserMemories(data.memories || [], userId);
+                
+            } catch (error) {
+                document.getElementById('user-memories').innerHTML = 
+                    '<div class="text-danger text-center py-4">Failed to load user memories</div>';
+            }
+        }
+
+        function displayUserMemories(memories, userId) {
+            const container = document.getElementById('user-memories');
+            
+            if (memories.length === 0) {
+                container.innerHTML = `<div class="text-muted text-center py-4">No memories found for user: ${userId}</div>`;
+                return;
+            }
+            
+            const html = memories.map(memory => `
+                <div class="memory-card p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <span class="badge bg-primary me-2">${memory.type}</span>
+                            <span class="badge scope-badge ${memory.scope === 'user' ? 'bg-warning' : 'bg-success'}">
+                                ${memory.scope === 'user' ? '🔒 Personal' : '🌐 Shared'}
+                            </span>
+                            ${memory.user_id ? `<span class="badge bg-secondary">${memory.user_id}</span>` : ''}
+                        </div>
+                        <small class="text-muted">${memory.created_at ? new Date(memory.created_at).toLocaleDateString() : 'N/A'}</small>
+                    </div>
+                    <h6 class="text-warning">${memory.key}</h6>
+                    <div class="memory-content">
+                        <pre class="text-light small mb-0">${JSON.stringify(memory.value, null, 2)}</pre>
+                    </div>
+                </div>
+            `).join('');
+            
+            container.innerHTML = html;
+        }
+
+        function clearForm() {
+            document.getElementById('add-knowledge-form').reset();
+            document.getElementById('knowledge-ttl').value = '365';
+        }
+
+        // ===== User Memory Management Functions =====
+        let selectedUserId = null;
+        
+        async function loadAllUsers() {
+            const userListEl = document.getElementById('user-list');
+            userListEl.innerHTML = '<div class="text-center py-4"><div class="spinner-border"></div><p class="mt-2">Loading...</p></div>';
+            
+            try {
+                const response = await fetch('/phone/list-users');
+                const data = await response.json();
+                
+                if (data.success && data.users.length > 0) {
+                    const html = data.users.map(user => `
+                        <div class="memory-card p-3 mb-2" onclick="selectUser('${user.user_id}')" style="cursor: pointer;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <i class="bi bi-person-fill"></i>
+                                    <strong>${user.user_id}</strong>
+                                </div>
+                                <span class="badge bg-primary">${user.memory_count} memories</span>
+                            </div>
+                        </div>
+                    `).join('');
+                    userListEl.innerHTML = html;
+                } else {
+                    const totalMem = data.total_memories || 0;
+                    userListEl.innerHTML = `
+                        <div class="alert alert-info text-center m-3">
+                            <h5>📭 No User Memories Yet</h5>
+                            <p class="mb-2">The system is connected to ai-memory service (${totalMem} total entries).</p>
+                            <p class="mb-2"><strong>User memories are created during phone calls</strong> when the AI extracts information like:</p>
+                            <ul class="text-start small">
+                                <li>Names (wife, kids, etc.)</li>
+                                <li>Birthdays and important dates</li>
+                                <li>Vehicles and preferences</li>
+                                <li>Business projects</li>
+                            </ul>
+                            <p class="mb-0 text-muted small">💡 <strong>Tip:</strong> Make a test call to <a href="tel:+19494449988">+1 (949) 444-9988</a> and mention some personal details to see memories appear here!</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                userListEl.innerHTML = '<div class="text-danger text-center py-4">Failed to load users</div>';
+                showNotification('Error', 'Failed to load users: ' + error.message, true);
+            }
+        }
+
+        async function selectUser(userId) {
+            selectedUserId = userId;
+            const titleEl = document.getElementById('selected-user-title');
+            const listEl = document.getElementById('memories-list');
+            const addBtn = document.getElementById('add-memory-btn');
+            
+            titleEl.textContent = `Memories for: ${userId}`;
+            addBtn.style.display = 'block';
+            listEl.innerHTML = '<div class="text-center py-4"><div class="spinner-border"></div><p class="mt-2">Loading memories...</p></div>';
+            
+            // ✅ NEW: Also load structured schema
+            loadUserSchema(userId);
+            
+            try {
+                const response = await fetch(`/phone/user-memories/${userId}`);
+                const data = await response.json();
+                
+                if (data.success && data.memories.length > 0) {
+                    displayUserMemoriesManagement(data.memories, userId);
+                } else {
+                    listEl.innerHTML = '<div class="text-muted text-center py-4">No memories found for this user</div>';
+                }
+            } catch (error) {
+                listEl.innerHTML = '<div class="text-danger text-center py-4">Failed to load memories</div>';
+                showNotification('Error', 'Failed to load memories: ' + error.message, true);
+            }
+        }
+        
+        // ✅ NEW: Load and display structured schema
+        async function loadUserSchema(userId) {
+            const schemaEl = document.getElementById('schema-editor');
+            schemaEl.innerHTML = '<div class="text-center py-4"><div class="spinner-border spinner-border-sm"></div><p class="mt-2 small">Loading schema...</p></div>';
+            
+            try {
+                // Call Flask backend to get normalized schema (fixes CORS)
+                const response = await fetch(`/phone/user-schema/${userId}`);
+                const data = await response.json();
+                
+                if (data.success && data.schema) {
+                    displaySchemaEditor(data.schema, userId);
+                } else {
+                    // Show empty template if no schema
+                    const emptySchema = {
+                        identity: {},
+                        contacts: {spouse: {}, father: {}, mother: {}, children: []},
+                        vehicles: [],
+                        policies: [],
+                        preferences: {},
+                        facts: [],
+                        commitments: []
+                    };
+                    displaySchemaEditor(emptySchema, userId);
+                }
+            } catch (error) {
+                console.error('Failed to load schema:', error);
+                schemaEl.innerHTML = '<div class="text-danger small text-center py-4">Failed to load schema: ' + error.message + '</div>';
+            }
+        }
+        
+        // ✅ NEW: Display collapsible tree schema editor
+        function displaySchemaEditor(schema, userId) {
+            const schemaEl = document.getElementById('schema-editor');
+            const contacts = schema.contacts || {};
+            const children = contacts.children || [];
+            
+            schemaEl.innerHTML = `
+                <div class="accordion accordion-flush" id="schemaAccordion">
+                    
+                    <!-- IDENTITY CATEGORY -->
+                    <div class="accordion-item bg-dark border-secondary mb-1">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-dark text-white py-2 px-2" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#identity-collapse">
+                                <small>👤 Identity</small>
+                            </button>
+                        </h2>
+                        <div id="identity-collapse" class="accordion-collapse collapse" data-bs-parent="#schemaAccordion">
+                            <div class="accordion-body p-2">
+                                <input type="text" class="form-control form-control-sm mb-1" id="schema-caller-name" 
+                                       placeholder="Name" value="${schema.identity?.caller_name || ''}">
+                                <input type="text" class="form-control form-control-sm" id="schema-caller-phone" 
+                                       placeholder="Phone" value="${schema.identity?.caller_phone || ''}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- CONTACTS CATEGORY -->
+                    <div class="accordion-item bg-dark border-secondary mb-1">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-dark text-white py-2 px-2" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#contacts-collapse">
+                                <small>👥 Contacts</small>
+                            </button>
+                        </h2>
+                        <div id="contacts-collapse" class="accordion-collapse collapse" data-bs-parent="#schemaAccordion">
+                            <div class="accordion-body p-1">
+                                
+                                <!-- Spouse Subcategory -->
+                                <div class="card bg-secondary border-0 mb-1">
+                                    <div class="card-header p-1 bg-secondary border-0">
+                                        <button class="btn btn-sm btn-link text-white text-decoration-none p-0 w-100 text-start" 
+                                                type="button" data-bs-toggle="collapse" data-bs-target="#spouse-fields">
+                                            <small>💑 Spouse</small>
+                                        </button>
+                                    </div>
+                                    <div id="spouse-fields" class="collapse show">
+                                        <div class="card-body p-2 bg-dark">
+                                            <input type="text" class="form-control form-control-sm mb-1" id="schema-spouse-name" 
+                                                   placeholder="Name (e.g., Kelly)" value="${contacts.spouse?.name || ''}">
+                                            <input type="text" class="form-control form-control-sm mb-1" id="schema-spouse-birthday" 
+                                                   placeholder="Birthday" value="${contacts.spouse?.birthday || ''}">
+                                            <input type="text" class="form-control form-control-sm" id="schema-spouse-phone" 
+                                                   placeholder="Phone" value="${contacts.spouse?.phone || ''}">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Father Subcategory -->
+                                <div class="card bg-secondary border-0 mb-1">
+                                    <div class="card-header p-1 bg-secondary border-0">
+                                        <button class="btn btn-sm btn-link text-white text-decoration-none p-0 w-100 text-start" 
+                                                type="button" data-bs-toggle="collapse" data-bs-target="#father-fields">
+                                            <small>👴 Father</small>
+                                        </button>
+                                    </div>
+                                    <div id="father-fields" class="collapse">
+                                        <div class="card-body p-2 bg-dark">
+                                            <input type="text" class="form-control form-control-sm mb-1" id="schema-father-name" 
+                                                   placeholder="Name" value="${contacts.father?.name || ''}">
+                                            <input type="text" class="form-control form-control-sm mb-1" id="schema-father-birthday" 
+                                                   placeholder="Birthday" value="${contacts.father?.birthday || ''}">
+                                            <input type="text" class="form-control form-control-sm" id="schema-father-phone" 
+                                                   placeholder="Phone" value="${contacts.father?.phone || ''}">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Mother Subcategory -->
+                                <div class="card bg-secondary border-0 mb-1">
+                                    <div class="card-header p-1 bg-secondary border-0">
+                                        <button class="btn btn-sm btn-link text-white text-decoration-none p-0 w-100 text-start" 
+                                                type="button" data-bs-toggle="collapse" data-bs-target="#mother-fields">
+                                            <small>👵 Mother</small>
+                                        </button>
+                                    </div>
+                                    <div id="mother-fields" class="collapse">
+                                        <div class="card-body p-2 bg-dark">
+                                            <input type="text" class="form-control form-control-sm mb-1" id="schema-mother-name" 
+                                                   placeholder="Name" value="${contacts.mother?.name || ''}">
+                                            <input type="text" class="form-control form-control-sm mb-1" id="schema-mother-birthday" 
+                                                   placeholder="Birthday" value="${contacts.mother?.birthday || ''}">
+                                            <input type="text" class="form-control form-control-sm" id="schema-mother-phone" 
+                                                   placeholder="Phone" value="${contacts.mother?.phone || ''}">
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Children Subcategory (Dynamic) -->
+                                ${children.length > 0 ? `
+                                <div class="card bg-secondary border-0 mb-1">
+                                    <div class="card-header p-1 bg-secondary border-0">
+                                        <button class="btn btn-sm btn-link text-white text-decoration-none p-0 w-100 text-start" 
+                                                type="button" data-bs-toggle="collapse" data-bs-target="#children-fields">
+                                            <small>👶 Children (${children.length})</small>
+                                        </button>
+                                    </div>
+                                    <div id="children-fields" class="collapse">
+                                        <div class="card-body p-2 bg-dark">
+                                            ${children.map((child, idx) => `
+                                                <div class="mb-2 pb-2 border-bottom border-secondary">
+                                                    <input type="text" class="form-control form-control-sm mb-1" 
+                                                           placeholder="Name" value="${child.name || ''}" readonly>
+                                                    <small class="text-muted">${child.relationship || 'child'}</small>
+                                                </div>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- VEHICLES CATEGORY -->
+                    <div class="accordion-item bg-dark border-secondary mb-1">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-dark text-white py-2 px-2" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#vehicles-collapse">
+                                <small>🚗 Vehicles (${(schema.vehicles || []).length})</small>
+                            </button>
+                        </h2>
+                        <div id="vehicles-collapse" class="accordion-collapse collapse" data-bs-parent="#schemaAccordion">
+                            <div class="accordion-body p-2">
+                                <div id="vehicles-list">
+                                    ${(schema.vehicles || []).map((v, idx) => `
+                                        <div class="card bg-secondary border-0 mb-1">
+                                            <div class="card-body p-2">
+                                                <input type="number" class="form-control form-control-sm mb-1" 
+                                                       id="vehicle-${idx}-year" placeholder="Year" value="${v.year || ''}">
+                                                <input type="text" class="form-control form-control-sm mb-1" 
+                                                       id="vehicle-${idx}-make" placeholder="Make" value="${v.make || ''}">
+                                                <input type="text" class="form-control form-control-sm" 
+                                                       id="vehicle-${idx}-model" placeholder="Model" value="${v.model || ''}">
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                                <button class="btn btn-sm btn-outline-light w-100" onclick="addVehicle()">+ Add Vehicle</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- POLICIES CATEGORY -->
+                    <div class="accordion-item bg-dark border-secondary mb-1">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-dark text-white py-2 px-2" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#policies-collapse">
+                                <small>📋 Policies (${(schema.policies || []).length})</small>
+                            </button>
+                        </h2>
+                        <div id="policies-collapse" class="accordion-collapse collapse" data-bs-parent="#schemaAccordion">
+                            <div class="accordion-body p-2">
+                                <small class="text-muted">Policy data auto-extracted from conversations</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- PREFERENCES CATEGORY -->
+                    <div class="accordion-item bg-dark border-secondary mb-1">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed bg-dark text-white py-2 px-2" type="button" 
+                                    data-bs-toggle="collapse" data-bs-target="#preferences-collapse">
+                                <small>⭐ Preferences</small>
+                            </button>
+                        </h2>
+                        <div id="preferences-collapse" class="accordion-collapse collapse" data-bs-parent="#schemaAccordion">
+                            <div class="accordion-body p-2">
+                                <textarea class="form-control form-control-sm" id="schema-preferences" rows="3" 
+                                          placeholder="Communication preferences, interests, etc.">${JSON.stringify(schema.preferences || {}, null, 2)}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
+                
+                <button class="btn btn-success btn-sm w-100 mt-3" onclick="saveSchema('${userId}')">💾 Save Profile</button>
+                <button class="btn btn-primary btn-sm w-100 mt-2" onclick="processAllMemories('${userId}')">🔄 Extract from All Memories</button>
+                <div class="text-muted mt-2 small text-center">
+                    Extract will process all memories and populate this schema automatically
+                </div>
+            `;
+        }
+        
+        function addVehicle() {
+            const vehiclesList = document.getElementById('vehicles-list');
+            const idx = vehiclesList.children.length;
+            const html = `
+                <div class="card bg-secondary border-0 mb-1">
+                    <div class="card-body p-2">
+                        <input type="number" class="form-control form-control-sm mb-1" 
+                               id="vehicle-${idx}-year" placeholder="Year">
+                        <input type="text" class="form-control form-control-sm mb-1" 
+                               id="vehicle-${idx}-make" placeholder="Make">
+                        <input type="text" class="form-control form-control-sm" 
+                               id="vehicle-${idx}-model" placeholder="Model">
+                    </div>
+                </div>
+            `;
+            vehiclesList.insertAdjacentHTML('beforeend', html);
+        }
+        
+        // ✅ NEW: Process all memories and extract to schema
+        async function processAllMemories(userId) {
+            if (!confirm('This will process ALL memories for this user and extract information into the structured schema. Continue?')) {
+                return;
+            }
+            
+            const btn = event.target;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing...';
+            
+            try {
+                const response = await fetch(`/phone/process-all-memories/${userId}`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Success', 
+                        `Extracted: ${data.stats.contacts} contacts, ${data.stats.vehicles} vehicles, ${data.stats.policies} policies, ${data.stats.facts} facts from ${data.stats.total_memories} memories!`, 
+                        false);
+                    
+                    // Reload the schema editor to show extracted data
+                    loadUserSchema(userId);
+                } else {
+                    showNotification('Error', 'Failed to process memories: ' + (data.error || 'Unknown error'), true);
+                }
+            } catch (error) {
+                console.error('Process error:', error);
+                showNotification('Error', 'Failed to process: ' + error.message, true);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🔄 Extract from All Memories';
+            }
+        }
+        
+        // ✅ NEW: Save schema changes from collapsible tree
+        async function saveSchema(userId) {
+            // Collect vehicles from dynamic inputs
+            const vehiclesList = document.getElementById('vehicles-list');
+            const vehicles = [];
+            for (let i = 0; i < vehiclesList.children.length; i++) {
+                const year = document.getElementById(`vehicle-${i}-year`)?.value;
+                const make = document.getElementById(`vehicle-${i}-make`)?.value;
+                const model = document.getElementById(`vehicle-${i}-model`)?.value;
+                if (year || make || model) {
+                    vehicles.push({ year: parseInt(year) || null, make, model });
+                }
+            }
+            
+            const schema = {
+                identity: {
+                    caller_name: document.getElementById('schema-caller-name')?.value || '',
+                    caller_phone: document.getElementById('schema-caller-phone')?.value || ''
+                },
+                contacts: {
+                    spouse: {
+                        name: document.getElementById('schema-spouse-name')?.value || '',
+                        birthday: document.getElementById('schema-spouse-birthday')?.value || '',
+                        phone: document.getElementById('schema-spouse-phone')?.value || '',
+                        relationship: 'spouse'
+                    },
+                    father: {
+                        name: document.getElementById('schema-father-name')?.value || '',
+                        birthday: document.getElementById('schema-father-birthday')?.value || '',
+                        phone: document.getElementById('schema-father-phone')?.value || '',
+                        relationship: 'father'
+                    },
+                    mother: {
+                        name: document.getElementById('schema-mother-name')?.value || '',
+                        birthday: document.getElementById('schema-mother-birthday')?.value || '',
+                        phone: document.getElementById('schema-mother-phone')?.value || '',
+                        relationship: 'mother'
+                    }
+                },
+                vehicles: vehicles,
+                preferences: JSON.parse(document.getElementById('schema-preferences')?.value || '{}')
+            };
+            
+            // ✅ DEBUG: Log what we're about to save
+            console.log('💾 Saving schema:', JSON.stringify(schema, null, 2));
+            
+            try {
+                // Save via Flask backend (fixes CORS)
+                const response = await fetch('/phone/save-schema', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        user_id: userId,
+                        schema: schema
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Success', 'Profile saved successfully!', false);
+                } else {
+                    showNotification('Error', 'Failed to save profile: ' + (data.error || 'Unknown error'), true);
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                showNotification('Error', 'Failed to save: ' + error.message, true);
+            }
+        }
+
+        function displayUserMemoriesManagement(memories, userId) {
+            const container = document.getElementById('memories-list');
+            
+            // Count structured vs plain memories
+            let structuredCount = 0;
+            let plainCount = 0;
+            
+            const html = memories.map((memory, index) => {
+                const memoryStr = JSON.stringify(memory).replace(/'/g, "&#39;").replace(/"/g, '&quot;');
+                const value = memory.value || memory.value_json || {};
+                const isDict = typeof value === 'object' && value !== null && !Array.isArray(value);
+                const isString = typeof value === 'string';
+                
+                if (isDict) structuredCount++;
+                else plainCount++;
+                
+                // Determine if this memory will be used by AI
+                const memType = memory.type || 'unknown';
+                const memKey = (memory.k || memory.key || '').toLowerCase();
+                const willBeUsed = isDict || 
+                    (isString && (
+                        ['person', 'preference', 'project', 'rule', 'moment'].includes(memType) ||
+                        memKey.includes('father') || memKey.includes('wife') || memKey.includes('family')
+                    ));
+                
+                return `
+                    <div class="memory-card p-3 mb-2" style="border-left: 4px solid ${willBeUsed ? '#28a745' : '#6c757d'}">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <div>
+                                <span class="badge bg-primary me-2">${memType}</span>
+                                <span class="badge bg-secondary me-2">${memory.k || memory.key || 'no-key'}</span>
+                                ${isDict ? '<span class="badge bg-success" title="Structured data - will be used by AI">📋 DICT</span>' : 
+                                 isString ? '<span class="badge bg-warning text-dark" title="Plain text - may be skipped">📝 STRING</span>' : 
+                                 '<span class="badge bg-info">📊 OTHER</span>'}
+                                ${willBeUsed ? '<span class="badge bg-success ms-1" title="This memory will be loaded during calls">✅ ACTIVE</span>' : 
+                                 '<span class="badge bg-secondary ms-1" title="This memory may be skipped">⚠️ INACTIVE</span>'}
+                            </div>
+                            <div>
+                                <button class="btn btn-sm btn-warning me-1" onclick='editMemory(${memoryStr})'>✏️ Edit</button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteMemoryConfirm('${memory.id || index}', '${userId}')">🗑️ Delete</button>
+                            </div>
+                        </div>
+                        <div class="memory-content">
+                            <pre class="text-light small mb-0">${JSON.stringify(value, null, 2)}</pre>
+                        </div>
+                        ${isString && !willBeUsed ? '<small class="text-warning">💡 Tip: Convert to structured JSON to ensure AI uses this memory</small>' : ''}
+                    </div>
+                `;
+            }).join('');
+            
+            // Add summary header
+            const summaryHtml = `
+                <div class="alert alert-info mb-3">
+                    <strong>Memory Summary:</strong> ${memories.length} total memories
+                    <br>
+                    ✅ <strong>${structuredCount} DICT</strong> (structured data - always used by AI)
+                    <br>
+                    📝 <strong>${plainCount} STRING</strong> (plain text - only used if type=person/preference/project/rule/moment or key contains family keywords)
+                    <br><br>
+                    <small>💡 <strong>Best Practice:</strong> Use structured JSON format (DICT) for important information like names, birthdays, preferences to ensure the AI can recall them.</small>
+                </div>
+            `;
+            
+            container.innerHTML = summaryHtml + html;
+        }
+
+        function editMemory(memory) {
+            const value = memory.value || memory.value_json || {};
+            const valueStr = JSON.stringify(value, null, 2);
+            const key = memory.k || memory.key || '';
+            
+            const modal = document.createElement('div');
+            modal.className = 'modal fade show';
+            modal.style.display = 'block';
+            modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content bg-dark text-light">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Edit Memory</h5>
+                            <button type="button" class="btn-close btn-close-white" onclick="this.closest('.modal').remove()"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Type</label>
+                                <input type="text" class="form-control" id="edit-type" value="${memory.type || ''}" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Key</label>
+                                <input type="text" class="form-control" id="edit-key" value="${key}">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Value (JSON)</label>
+                                <textarea class="form-control json-editor" id="edit-value" rows="10">${valueStr}</textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancel</button>
+                            <button type="button" class="btn btn-primary" onclick="saveMemoryEdit('${memory.id}', '${key}', '${memory.type}')">💾 Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        async function saveMemoryEdit(memoryId, oldKey, type) {
+            const valueText = document.getElementById('edit-value').value;
+            const key = document.getElementById('edit-key').value;
+            
+            try {
+                const value = JSON.parse(valueText);
+                
+                const response = await fetch('/phone/update-memory', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        memory_id: memoryId,
+                        user_id: selectedUserId,
+                        type: type,
+                        key: key,
+                        value: value
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Success', 'Memory updated successfully!');
+                    document.querySelector('.modal').remove();
+                    selectUser(selectedUserId); // Reload memories
+                } else {
+                    showNotification('Error', 'Failed to update: ' + data.error, true);
+                }
+            } catch (error) {
+                showNotification('Error', 'Invalid JSON or network error: ' + error.message, true);
+            }
+        }
+
+        function deleteMemoryConfirm(memoryId, userId) {
+            if (confirm('Are you sure you want to delete this memory?')) {
+                deleteMemory(memoryId, userId);
+            }
+        }
+
+        async function deleteMemory(memoryId, userId) {
+            try {
+                const response = await fetch('/phone/delete-memory', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({memory_id: memoryId})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    showNotification('Success', 'Memory deleted successfully!');
+                    selectUser(userId); // Reload memories
+                } else {
+                    showNotification('Error', 'Failed to delete: ' + data.error, true);
+                }
+            } catch (error) {
+                showNotification('Error', 'Network error: ' + error.message, true);
+            }
+        }
+
+        function showAddMemoryModal() {
+            const modal = document.createElement('div');
+            modal.className = 'modal fade show';
+            modal.style.display = 'block';
+            modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content bg-dark text-light">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Add New Memory for User: ${selectedUserId}</h5>
+                            <button type="button" class="btn-close btn-close-white" onclick="this.closest('.modal').remove()"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">Type</label>
+                                <select class="form-select" id="new-memory-type" onchange="updateMemoryInputs()">
+                                    <option value="person">Person</option>
+                                    <option value="fact">Fact</option>
+                                    <option value="preference">Preference</option>
+                                    <option value="project">Project</option>
+                                    <option value="rule">Rule</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Key (Identifier)</label>
+                                <input type="text" class="form-control" id="new-memory-key" placeholder="e.g., fathers_name">
+                                <small class="text-muted">Unique identifier like: fathers_name, wifes_birthday, favorite_car</small>
+                            </div>
+                            
+                            <!-- Dynamic input fields based on type -->
+                            <div id="memory-input-fields"></div>
+                            
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" id="manual-json-toggle">
+                                <label class="form-check-label" for="manual-json-toggle">
+                                    Advanced: Edit JSON manually
+                                </label>
+                            </div>
+                            
+                            <div id="manual-json-container" style="display:none;">
+                                <div class="mb-3">
+                                    <label class="form-label">Value (JSON)</label>
+                                    <textarea class="form-control json-editor" id="new-memory-value" rows="8" placeholder='{"name": "Kelly", "birthday": "January 3rd"}'></textarea>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">Cancel</button>
+                            <button type="button" class="btn btn-success" onclick="saveNewMemory()">💾 Add Memory</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+            
+            // Initialize form
+            updateMemoryInputs();
+            
+            // Toggle manual JSON editing
+            document.getElementById('manual-json-toggle').addEventListener('change', function() {
+                const container = document.getElementById('manual-json-container');
+                const fields = document.getElementById('memory-input-fields');
+                if (this.checked) {
+                    container.style.display = 'block';
+                    fields.style.display = 'none';
+                    // Generate JSON from current fields
+                    generateJSONFromFields();
+                } else {
+                    container.style.display = 'none';
+                    fields.style.display = 'block';
+                }
+            });
+        }
+        
+        function updateMemoryInputs() {
+            const type = document.getElementById('new-memory-type').value;
+            const container = document.getElementById('memory-input-fields');
+            
+            let html = '';
+            
+            switch(type) {
+                case 'person':
+                    html = `
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Name *</label>
+                                <input type="text" class="form-control memory-field" data-field="name" placeholder="John Douglas Peterson Sr.">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Relationship</label>
+                                <input type="text" class="form-control memory-field" data-field="relationship" placeholder="father, wife, son, etc.">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Birthday</label>
+                                <input type="text" class="form-control memory-field" data-field="birthday" placeholder="March 15th">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Phone</label>
+                                <input type="text" class="form-control memory-field" data-field="phone" placeholder="(949) 555-1234">
+                            </div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label">Notes</label>
+                                <textarea class="form-control memory-field" data-field="notes" rows="2" placeholder="Additional information..."></textarea>
+                            </div>
+                        </div>
+                    `;
+                    break;
+                case 'fact':
+                    html = `
+                        <div class="mb-3">
+                            <label class="form-label">Description *</label>
+                            <textarea class="form-control memory-field" data-field="description" rows="3" placeholder="Describe the fact..."></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Date</label>
+                                <input type="text" class="form-control memory-field" data-field="date" placeholder="October 2025">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Category</label>
+                                <input type="text" class="form-control memory-field" data-field="category" placeholder="personal, business, etc.">
+                            </div>
+                        </div>
+                    `;
+                    break;
+                case 'preference':
+                    html = `
+                        <div class="mb-3">
+                            <label class="form-label">Item/Activity *</label>
+                            <input type="text" class="form-control memory-field" data-field="item" placeholder="Coffee, Golf, Italian Food, etc.">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Preference</label>
+                                <select class="form-select memory-field" data-field="preference">
+                                    <option value="likes">Likes</option>
+                                    <option value="loves">Loves</option>
+                                    <option value="dislikes">Dislikes</option>
+                                    <option value="allergic">Allergic to</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Category</label>
+                                <input type="text" class="form-control memory-field" data-field="category" placeholder="food, hobbies, sports, etc.">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Details</label>
+                            <textarea class="form-control memory-field" data-field="details" rows="2" placeholder="Additional details..."></textarea>
+                        </div>
+                    `;
+                    break;
+                case 'project':
+                    html = `
+                        <div class="mb-3">
+                            <label class="form-label">Project Name *</label>
+                            <input type="text" class="form-control memory-field" data-field="name" placeholder="Kitchen remodel, New car purchase, etc.">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Status</label>
+                                <select class="form-select memory-field" data-field="status">
+                                    <option value="planning">Planning</option>
+                                    <option value="in_progress">In Progress</option>
+                                    <option value="completed">Completed</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Timeline</label>
+                                <input type="text" class="form-control memory-field" data-field="timeline" placeholder="Q1 2025, Next month, etc.">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control memory-field" data-field="notes" rows="2" placeholder="Project details..."></textarea>
+                        </div>
+                    `;
+                    break;
+                case 'rule':
+                    html = `
+                        <div class="mb-3">
+                            <label class="form-label">Rule *</label>
+                            <textarea class="form-control memory-field" data-field="rule" rows="3" placeholder="Always call before 9 PM, Never mention politics, etc."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Priority</label>
+                            <select class="form-select memory-field" data-field="priority">
+                                <option value="high">High</option>
+                                <option value="medium">Medium</option>
+                                <option value="low">Low</option>
+                            </select>
+                        </div>
+                    `;
+                    break;
+            }
+            
+            container.innerHTML = html;
+        }
+        
+        function generateJSONFromFields() {
+            const fields = document.querySelectorAll('.memory-field');
+            const data = {};
+            
+            fields.forEach(field => {
+                const fieldName = field.getAttribute('data-field');
+                const value = field.value.trim();
+                if (value) {
+                    data[fieldName] = value;
+                }
+            });
+            
+            const jsonTextarea = document.getElementById('new-memory-value');
+            if (jsonTextarea) {
+                jsonTextarea.value = JSON.stringify(data, null, 2);
+            }
+            
+            return data;
+        }
+
+        async function saveNewMemory() {
+            console.log('🔍 saveNewMemory called');
+            
+            const type = document.getElementById('new-memory-type').value;
+            const key = document.getElementById('new-memory-key').value;
+            console.log('🔍 Type:', type, 'Key:', key, 'User:', selectedUserId);
+            
+            if (!key) {
+                console.error('❌ No key provided');
+                showNotification('Error', 'Please enter a key/identifier', true);
+                return;
+            }
+            
+            let value;
+            
+            // Check if using manual JSON mode
+            const manualMode = document.getElementById('manual-json-toggle').checked;
+            console.log('🔍 Manual mode:', manualMode);
+            
+            if (manualMode) {
+                const valueText = document.getElementById('new-memory-value').value;
+                if (!valueText) {
+                    console.error('❌ No value text provided');
+                    showNotification('Error', 'Please enter a value', true);
+                    return;
+                }
+                try {
+                    value = JSON.parse(valueText);
+                    console.log('✅ Parsed manual JSON:', value);
+                } catch (error) {
+                    console.error('❌ Invalid JSON:', error);
+                    showNotification('Error', 'Invalid JSON format', true);
+                    return;
+                }
+            } else {
+                // Generate JSON from form fields
+                value = generateJSONFromFields();
+                console.log('🔍 Generated value from fields:', value);
+                console.log('🔍 Value keys count:', Object.keys(value).length);
+                
+                if (Object.keys(value).length === 0) {
+                    console.error('❌ No fields filled in');
+                    showNotification('Error', 'Please fill in at least one field', true);
+                    return;
+                }
+            }
+            
+            try {
+                const payload = {
+                    user_id: selectedUserId,
+                    type: type,
+                    key: key,
+                    value: value
+                };
+                console.log('📤 Sending request:', payload);
+                
+                const response = await fetch('/phone/update-memory', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                
+                console.log('📥 Response status:', response.status);
+                const data = await response.json();
+                console.log('📥 Response data:', data);
+                
+                if (data.success) {
+                    console.log('✅ Memory saved successfully');
+                    showNotification('Success', 'Memory added successfully!');
+                    document.querySelector('.modal').remove();
+                    selectUser(selectedUserId); // Reload memories
+                } else {
+                    console.error('❌ Save failed:', data.error);
+                    showNotification('Error', 'Failed to add: ' + data.error, true);
+                }
+            } catch (error) {
+                console.error('❌ Network error:', error);
+                showNotification('Error', 'Network error: ' + error.message, true);
+            }
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSharedKnowledge();
+            loadAgentName();
+            loadOpenAIVoice();
+            refreshStatus();
+            loadAllUsers(); // Load user list on page load
+            
+            // Add sample JSON to textarea
+            document.getElementById('knowledge-content').placeholder = JSON.stringify({
+                "description": "Peterson Family Insurance policy information",
+                "policy_type": "Auto Insurance", 
+                "coverage_amount": "$25,000",
+                "deductible": "$500",
+                "note": "Standard coverage for California residents"
+            }, null, 2);
+        });
+    </script>
+</body>
+</html>

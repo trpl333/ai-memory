@@ -1,0 +1,11 @@
+[1;36m(APIServer pid=20)[0;0m INFO:     100.64.0.35:53570 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1;36m(APIServer pid=20)[0;0m INFO 09-05 18:42:46 [loggers.py:123] Engine 000: Avg prompt throughput: 36.5 tokens/s, Avg generation throughput: 3.2 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 59.4%
+[1;36m(APIServer pid=20)[0;0m INFO 09-05 18:42:56 [loggers.py:123] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 59.4%
+[1;36m(APIServer pid=20)[0;0m INFO:     100.64.0.26:45830 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1;36m(APIServer pid=20)[0;0m INFO 09-05 18:43:06 [loggers.py:123] Engine 000: Avg prompt throughput: 35.7 tokens/s, Avg generation throughput: 2.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 59.0%
+[1;36m(APIServer pid=20)[0;0m INFO 09-05 18:43:16 [loggers.py:123] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 59.0%
+[1;36m(APIServer pid=20)[0;0m INFO:     100.64.0.37:40770 - "POST /v1/chat/completions HTTP/1.1" 200 OK
+[1;36m(APIServer pid=20)[0;0m INFO 09-05 18:43:26 [loggers.py:123] Engine 000: Avg prompt throughput: 35.4 tokens/s, Avg generation throughput: 2.5 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 59.1%
+[1;36m(APIServer pid=20)[0;0m INFO 09-05 18:43:36 [loggers.py:123] Engine 000: Avg prompt throughput: 0.0 tokens/s, Avg generation throughput: 0.0 tokens/s, Running: 0 reqs, Waiting: 0 reqs, GPU KV cache usage: 0.0%, Prefix cache hit rate: 59.1%
+[1;36m(APIServer pid=20)[0;0m ERROR 09-05 18:44:33 [serving_chat.py:169] Error with model error=ErrorInfo(message='The model `Qwen/Qwen2-7B-Instruct` does not exist.', type='NotFoundError', param=None, code=404)
+[1;36m(APIServer pid=20)[0;0m INFO:     100.64.0.37:48376 - "POST /v1/chat/completions HTTP/1.1" 404 Not Found

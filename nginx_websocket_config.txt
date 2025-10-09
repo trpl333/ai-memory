@@ -1,0 +1,21 @@
+# Nginx WebSocket Proxy Configuration for OpenAI Realtime API
+# Add this to: /etc/nginx/sites-enabled/voice-theinsurancedoctors-com.conf
+# Inside the existing server block
+
+    # WebSocket proxy for Twilio Media Streams (FastAPI port 8001)
+    location /phone/media-stream {
+        proxy_pass http://127.0.0.1:8001/phone/media-stream;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600;
+        proxy_send_timeout 3600;
+    }
+
+# After adding, test and reload:
+# sudo nginx -t
+# sudo systemctl reload nginx
