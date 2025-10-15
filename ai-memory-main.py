@@ -181,6 +181,27 @@ async def memory_read(session_id: str = Query(..., alias="session_id")):
     rows = await database.fetch_all(q)
     return {"rows": [dict(r) for r in rows]}
 
+@app.get("/memory/keys")
+async def list_user_ids():
+    """
+    Returns all unique user_ids currently stored in memory.
+    Used by the Notion sync service to discover new callers automatically.
+    """
+    if not database:
+        raise HTTPException(status_code=500, detail="Database not configured")
+    
+    try:
+        # Get distinct user_ids from the memory table using raw SQL
+        query = "SELECT DISTINCT user_id FROM memory WHERE user_id IS NOT NULL ORDER BY user_id"
+        rows = await database.fetch_all(query)
+        
+        # Return as list of dicts for easy consumption
+        user_ids = [{"user_id": row["user_id"]} for row in rows]
+        return user_ids
+    except Exception as e:
+        logging.exception("Error fetching user_ids")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch user_ids: {str(e)}")
+
 # ------------------------------------------------------------
 # LLM endpoint (calls OpenAI API)
 # ------------------------------------------------------------
