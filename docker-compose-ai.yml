@@ -3,7 +3,7 @@ version: "3.8"
 services:
   ai-memory-orchestrator-worker:
     build: .
-    command: uvicorn ai-memory-main:app --host 0.0.0.0 --port 8100
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8100
     env_file:
       - .env
     restart: unless-stopped
