@@ -782,6 +782,15 @@ async def get_shared_memories(
             memories = [m for m in memories if m.get("scope") in ("shared", "global")]
         else:
             memories = mem_store.get_shared_memories(limit=limit)
+                # 👇 Convert any JSON strings back into dictionaries
+        for mem in memories:
+            try:
+                if isinstance(mem.get("value"), str):
+                    parsed = json.loads(mem["value"])
+                    if isinstance(parsed, dict):
+                        mem["value"] = parsed
+            except Exception:
+                continue
         return {"memories": memories, "count": len(memories)}
     except Exception as e:
         logger.error(f"Failed to get shared memories: {e}")
