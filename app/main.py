@@ -678,29 +678,32 @@ async def get_memories(
     except Exception as e:
         logger.error(f"Failed to get memories: {e}")
         raise HTTPException(status_code=500, detail="Failed to retrieve memories")
-
 @app.post("/v1/memories")
 async def store_memory(
-    import json
-    if isinstance(item.value, dict):
-        # Ensure structured JSON (like prompt_blocks) is stored correctly
-        item.value = json.dumps(item.value, ensure_ascii=False)
-        logger.info(f"🧠 Stored structured JSON for key={item.key}")    
     memory: MemoryObject,
     mem_store: MemoryStore = Depends(get_memory_store)
 ):
+    import json
     try:
+        if isinstance(memory.value, dict):
+            # Ensure structured JSON (like prompt_blocks) is stored correctly
+            memory.value = json.dumps(memory.value, ensure_ascii=False)
+            logger.info(f"🧠 Stored structured JSON for key={memory.key}")    
+
         memory_id = mem_store.write(
             memory.type, memory.key, memory.value,
             user_id=None, scope="shared",
             ttl_days=memory.ttl_days, source=memory.source
         )
-        return {"success": True, "id": memory_id, "memory_id": memory_id,
-                "message": f"Memory stored: {memory.type}:{memory.key}"}
+        return {
+            "success": True,
+            "id": memory_id,
+            "memory_id": memory_id,
+            "message": f"Memory stored: {memory.type}:{memory.key}"
+        }
     except Exception as e:
         logger.error(f"Failed to store memory: {e}")
         raise HTTPException(status_code=500, detail="Failed to store memory")
-
 @app.delete("/v1/memories/{memory_id}")
 async def delete_memory(
     memory_id: str,
