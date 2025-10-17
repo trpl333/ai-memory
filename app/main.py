@@ -681,6 +681,11 @@ async def get_memories(
 
 @app.post("/v1/memories")
 async def store_memory(
+    import json
+    if isinstance(item.value, dict):
+        # Ensure structured JSON (like prompt_blocks) is stored correctly
+        item.value = json.dumps(item.value, ensure_ascii=False)
+        logger.info(f"🧠 Stored structured JSON for key={item.key}")    
     memory: MemoryObject,
     mem_store: MemoryStore = Depends(get_memory_store)
 ):
