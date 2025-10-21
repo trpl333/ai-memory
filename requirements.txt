@@ -36,7 +36,6 @@ packaging==25.0
 pgvector==0.3.6
 propcache==0.3.2
 psycopg2-binary==2.9.10
-pydantic==2.10.4
 pydantic_core==2.27.2
 pydub==0.25.1
 PyJWT==2.10.1
@@ -69,3 +68,10 @@ openai>=1.52.0
 python-socketio
 websockets
 flask-sock
+email_validator
+flask
+flask-sqlalchemy
+gunicorn
+notion-client
+psycopg2-binary
+fastapi>=0.115.0
