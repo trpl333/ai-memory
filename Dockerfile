@@ -21,7 +21,8 @@ COPY . .
 # Create directory for static files
 RUN mkdir -p static
 
-# Expose ports for Flask (5000) and FastAPI (8001)
-EXPOSE 5000 8001
+# Expose ports for Flask (5000), FastAPI (8001), and production (8100)
+EXPOSE 5000 8001 8100
 
-# Command is specified in docker-compose.yml to use start_server.py
+# Start the FastAPI application on port 8100 (production)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8100"]
