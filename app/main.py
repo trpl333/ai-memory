@@ -812,6 +812,160 @@ async def execute_tool(tool_name: str, parameters: dict):
         raise HTTPException(status_code=500, detail=f"Tool execution failed: {str(e)}")
 
 # -----------------------------------------------------------------------------
+# Memory V2 API - Call Summaries & Personality Tracking
+# -----------------------------------------------------------------------------
+
+from app.models import ProcessCallRequest, EnrichedContextRequest, SearchSummariesRequest
+from app.memory_integration import MemoryV2Integration
+
+@app.post("/v2/process-call")
+async def process_call_v2(
+    request: ProcessCallRequest,
+    mem_store: MemoryStore = Depends(get_memory_store)
+):
+    """Process completed call - auto-summarize and track personality"""
+    try:
+        memory_v2 = MemoryV2Integration(mem_store, llm_chat)
+        result = memory_v2.process_completed_call(
+            conversation_history=[(msg[0], msg[1]) for msg in request.conversation_history],
+            user_id=request.user_id,
+            thread_id=request.thread_id
+        )
+        return {"success": True, **result}
+    except Exception as e:
+        logger.error(f"Failed to process call: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
+
+@app.post("/v2/context/enriched")
+async def get_enriched_context_v2(
+    request: EnrichedContextRequest,
+    mem_store: MemoryStore = Depends(get_memory_store)
+):
+    """Get enriched caller context (fast - <1 second)"""
+    try:
+        memory_v2 = MemoryV2Integration(mem_store, llm_chat)
+        context = memory_v2.get_enriched_context_for_call(
+            user_id=request.user_id,
+            num_summaries=request.num_summaries or 5
+        )
+        summary_count = len([line for line in context.split("\n") if line.strip().startswith("Call")]) if context else 0
+        return {
+            "success": True,
+            "context": context,
+            "summary_count": summary_count,
+            "has_personality_data": "PERSONALITY PROFILE" in context if context else False
+        }
+    except Exception as e:
+        logger.error(f"Failed to get enriched context: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
+
+@app.get("/v2/summaries/{user_id}")
+async def get_call_summaries_v2(
+    user_id: str,
+    limit: int = 10,
+    mem_store: MemoryStore = Depends(get_memory_store)
+):
+    """Get call summaries for a user"""
+    try:
+        summaries = mem_store.get_call_summaries(user_id, limit)
+        return {
+            "success": True,
+            "user_id": user_id,
+            "summaries": summaries,
+            "total": len(summaries)
+        }
+    except Exception as e:
+        logger.error(f"Failed to get call summaries: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
+
+@app.get("/v2/profile/{user_id}")
+async def get_caller_profile_v2(
+    user_id: str,
+    mem_store: MemoryStore = Depends(get_memory_store)
+):
+    """Get caller profile"""
+    try:
+        profile = mem_store.get_or_create_caller_profile(user_id)
+        return {
+            "success": True,
+            "profile": profile
+        }
+    except Exception as e:
+        logger.error(f"Failed to get caller profile: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
+
+@app.get("/v2/personality/{user_id}")
+async def get_personality_averages_v2(
+    user_id: str,
+    mem_store: MemoryStore = Depends(get_memory_store)
+):
+    """Get personality averages and trends"""
+    try:
+        averages = mem_store.get_personality_averages(user_id)
+        if averages:
+            # Structure the response for better readability
+            personality_data = {
+                "call_count": averages.get("call_count", 0),
+                "big_five": {
+                    "openness": averages.get("avg_openness"),
+                    "conscientiousness": averages.get("avg_conscientiousness"),
+                    "extraversion": averages.get("avg_extraversion"),
+                    "agreeableness": averages.get("avg_agreeableness"),
+                    "neuroticism": averages.get("avg_neuroticism")
+                },
+                "communication_style": {
+                    "formality": averages.get("avg_formality"),
+                    "directness": averages.get("avg_directness"),
+                    "detail_orientation": averages.get("avg_detail_orientation"),
+                    "patience": averages.get("avg_patience"),
+                    "technical_comfort": averages.get("avg_technical_comfort")
+                },
+                "emotional_state": {
+                    "frustration_level": averages.get("avg_frustration_level"),
+                    "satisfaction_level": averages.get("avg_satisfaction_level"),
+                    "urgency_level": averages.get("avg_urgency_level")
+                },
+                "trends": {
+                    "satisfaction_trend": averages.get("satisfaction_trend", "stable")
+                }
+            }
+            return {
+                "success": True,
+                "user_id": user_id,
+                "personality": personality_data
+            }
+        else:
+            return {
+                "success": True,
+                "user_id": user_id,
+                "personality": None,
+                "message": "No personality data available yet"
+            }
+    except Exception as e:
+        logger.error(f"Failed to get personality averages: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
+
+@app.post("/v2/summaries/search")
+async def search_call_summaries_v2(
+    request: SearchSummariesRequest,
+    mem_store: MemoryStore = Depends(get_memory_store)
+):
+    """Semantic search on call summaries (not raw data)"""
+    try:
+        results = mem_store.search_call_summaries(
+            user_id=request.user_id,
+            query=request.query,
+            limit=request.limit or 5
+        )
+        return {
+            "success": True,
+            "results": results
+        }
+    except Exception as e:
+        logger.error(f"Failed to search call summaries: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
+
+# -----------------------------------------------------------------------------
 # OpenAI Realtime API Bridge for Twilio Media Streams
 # -----------------------------------------------------------------------------
 

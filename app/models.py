@@ -42,3 +42,18 @@ class ToolResponse(BaseModel):
     result: str
     success: bool
     error: Optional[str] = None
+
+# Memory V2 Models
+class ProcessCallRequest(BaseModel):
+    user_id: str
+    thread_id: str
+    conversation_history: List[List[str]]  # List of [role, content] pairs
+
+class EnrichedContextRequest(BaseModel):
+    user_id: str
+    num_summaries: Optional[int] = 5
+
+class SearchSummariesRequest(BaseModel):
+    user_id: str
+    query: str
+    limit: Optional[int] = 5
