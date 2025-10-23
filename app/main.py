@@ -844,10 +844,8 @@ async def get_enriched_context_v2(
     """Get enriched caller context (fast - <1 second)"""
     try:
         memory_v2 = MemoryV2Integration(mem_store, llm_chat)
-        context = memory_v2.get_enriched_context_for_call(
-            user_id=request.user_id,
-            num_summaries=request.num_summaries or 5
-        )
+        # Note: num_summaries is currently hardcoded in the method (default: 5)
+        context = memory_v2.get_enriched_context_for_call(user_id=request.user_id)
         summary_count = len([line for line in context.split("\n") if line.strip().startswith("Call")]) if context else 0
         return {
             "success": True,
@@ -867,7 +865,8 @@ async def get_call_summaries_v2(
 ):
     """Get call summaries for a user"""
     try:
-        summaries = mem_store.get_call_summaries(user_id, limit)
+        # Use search_call_summaries with empty query to get recent summaries
+        summaries = mem_store.search_call_summaries(user_id, query_text="", limit=limit)
         return {
             "success": True,
             "user_id": user_id,
@@ -954,7 +953,7 @@ async def search_call_summaries_v2(
     try:
         results = mem_store.search_call_summaries(
             user_id=request.user_id,
-            query=request.query,
+            query_text=request.query,
             limit=request.limit or 5
         )
         return {
