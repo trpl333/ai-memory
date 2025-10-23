@@ -426,3 +426,334 @@ class MemoryStore:
         if hasattr(self, 'conn'):
             self.conn.close()
             logger.info("Database connection closed")
+    
+    # =========================================================================
+    # MEMORY V2: Call Summaries, Caller Profiles, Personality Tracking
+    # =========================================================================
+    
+    def store_call_summary(self, summary_data: Dict[str, Any]) -> str:
+        """
+        Store a call summary in the database.
+        
+        Args:
+            summary_data: Dictionary with call_id, user_id, summary, key_topics,
+                         key_variables, sentiment, duration_seconds, resolution_status
+                         
+        Returns:
+            UUID of the stored summary
+        """
+        try:
+            # Generate embedding for the summary
+            summary_text = summary_data.get("summary", "")
+            embedding = embed(summary_text).tolist() if summary_text else None
+            
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO call_summaries (
+                        call_id, user_id, call_date, summary, key_topics,
+                        key_variables, sentiment, duration_seconds, 
+                        resolution_status, embedding
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                    """,
+                    (
+                        summary_data["call_id"],
+                        summary_data["user_id"],
+                        summary_data.get("call_date", datetime.now()),
+                        summary_data.get("summary", ""),
+                        Json(summary_data.get("key_topics", [])),
+                        Json(summary_data.get("key_variables", {})),
+                        summary_data.get("sentiment", "neutral"),
+                        summary_data.get("duration_seconds", 0),
+                        summary_data.get("resolution_status", "unknown"),
+                        embedding
+                    )
+                )
+                result = cur.fetchone()
+                summary_id = result[0] if result else None
+            
+            logger.info(f"✅ Stored call summary {summary_data['call_id']} for user {summary_data['user_id']}")
+            return str(summary_id)
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to store call summary: {e}")
+            raise
+    
+    def store_personality_metrics(self, metrics_data: Dict[str, Any]) -> str:
+        """
+        Store personality metrics for a call.
+        
+        Args:
+            metrics_data: Dictionary with user_id, call_id, and all personality scores
+            
+        Returns:
+            UUID of the stored metrics
+        """
+        try:
+            with self.conn.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO personality_metrics (
+                        user_id, call_id, measured_at,
+                        openness, conscientiousness, extraversion, agreeableness, neuroticism,
+                        formality, directness, detail_orientation, patience, technical_comfort,
+                        frustration_level, satisfaction_level, urgency_level
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                    """,
+                    (
+                        metrics_data["user_id"],
+                        metrics_data["call_id"],
+                        metrics_data.get("measured_at", datetime.now()),
+                        metrics_data.get("openness", 50),
+                        metrics_data.get("conscientiousness", 50),
+                        metrics_data.get("extraversion", 50),
+                        metrics_data.get("agreeableness", 50),
+                        metrics_data.get("neuroticism", 50),
+                        metrics_data.get("formality", 50),
+                        metrics_data.get("directness", 50),
+                        metrics_data.get("detail_orientation", 50),
+                        metrics_data.get("patience", 50),
+                        metrics_data.get("technical_comfort", 50),
+                        metrics_data.get("frustration_level", 0),
+                        metrics_data.get("satisfaction_level", 50),
+                        metrics_data.get("urgency_level", 30)
+                    )
+                )
+                result = cur.fetchone()
+                metrics_id = result[0] if result else None
+            
+            logger.info(f"✅ Stored personality metrics for user {metrics_data['user_id']}, call {metrics_data['call_id']}")
+            return str(metrics_id)
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to store personality metrics: {e}")
+            raise
+    
+    def get_or_create_caller_profile(self, user_id: str) -> Dict[str, Any]:
+        """
+        Get existing caller profile or create a new one.
+        
+        Args:
+            user_id: Caller identifier
+            
+        Returns:
+            Caller profile dictionary
+        """
+        try:
+            with self.conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    "SELECT * FROM caller_profiles WHERE user_id = %s",
+                    (user_id,)
+                )
+                row = cur.fetchone()
+            
+            if row:
+                return dict(row)
+            
+            # Create new profile
+            with self.conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    INSERT INTO caller_profiles (
+                        user_id, first_call_date, last_call_date, total_calls
+                    )
+                    VALUES (%s, %s, %s, %s)
+                    RETURNING *
+                    """,
+                    (user_id, datetime.now(), datetime.now(), 1)
+                )
+                row = cur.fetchone()
+            
+            logger.info(f"✅ Created new caller profile for {user_id}")
+            return dict(row) if row else {}
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to get/create caller profile: {e}")
+            return {}
+    
+    def update_caller_profile(self, user_id: str, updates: Dict[str, Any]) -> bool:
+        """
+        Update caller profile information.
+        
+        Args:
+            user_id: Caller identifier
+            updates: Dictionary of fields to update (preferred_name, preferences, context)
+            
+        Returns:
+            True if updated successfully
+        """
+        try:
+            set_clauses = []
+            params = []
+            
+            for key, value in updates.items():
+                if key in ['preferred_name', 'preferences', 'context']:
+                    set_clauses.append(f"{key} = %s")
+                    params.append(Json(value) if isinstance(value, dict) else value)
+            
+            if not set_clauses:
+                return False
+            
+            set_clauses.append("updated_at = NOW()")
+            set_clauses.append("last_call_date = NOW()")
+            set_clauses.append("total_calls = total_calls + 1")
+            
+            params.append(user_id)
+            
+            query = f"""
+                UPDATE caller_profiles
+                SET {', '.join(set_clauses)}
+                WHERE user_id = %s
+            """
+            
+            with self.conn.cursor() as cur:
+                cur.execute(query, params)
+            
+            logger.info(f"✅ Updated caller profile for {user_id}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to update caller profile: {e}")
+            return False
+    
+    def get_personality_averages(self, user_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Get personality averages for a caller.
+        
+        Args:
+            user_id: Caller identifier
+            
+        Returns:
+            Dictionary with averaged personality traits or None
+        """
+        try:
+            with self.conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    "SELECT * FROM personality_averages WHERE user_id = %s",
+                    (user_id,)
+                )
+                row = cur.fetchone()
+            
+            return dict(row) if row else None
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to get personality averages: {e}")
+            return None
+    
+    def search_call_summaries(self, user_id: str, query_text: str = "", limit: int = 5) -> List[Dict[str, Any]]:
+        """
+        Search call summaries for a user (FAST - summaries only, not raw data).
+        
+        Args:
+            user_id: Caller identifier
+            query_text: Optional text to search for (uses vector similarity)
+            limit: Maximum number of results
+            
+        Returns:
+            List of call summary dictionaries
+        """
+        try:
+            if query_text:
+                # Vector similarity search
+                query_embedding = embed(query_text).tolist()
+                
+                with self.conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute(
+                        """
+                        SELECT call_id, call_date, summary, key_topics, key_variables,
+                               sentiment, resolution_status,
+                               embedding <-> %s::vector as distance
+                        FROM call_summaries
+                        WHERE user_id = %s
+                        ORDER BY embedding <-> %s::vector
+                        LIMIT %s
+                        """,
+                        (query_embedding, user_id, query_embedding, limit)
+                    )
+                    rows = cur.fetchall()
+            else:
+                # Recent calls
+                with self.conn.cursor(cursor_factory=RealDictCursor) as cur:
+                    cur.execute(
+                        """
+                        SELECT call_id, call_date, summary, key_topics, key_variables,
+                               sentiment, resolution_status
+                        FROM call_summaries
+                        WHERE user_id = %s
+                        ORDER BY call_date DESC
+                        LIMIT %s
+                        """,
+                        (user_id, limit)
+                    )
+                    rows = cur.fetchall()
+            
+            results = [dict(row) for row in rows]
+            logger.info(f"✅ Retrieved {len(results)} call summaries for user {user_id}")
+            return results
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to search call summaries: {e}")
+            return []
+    
+    def get_caller_context_for_llm(self, user_id: str) -> str:
+        """
+        Build optimized context string for LLM (summary-first approach).
+        
+        This is the NEW fast retrieval method that reads summaries instead of raw data.
+        
+        Args:
+            user_id: Caller identifier
+            
+        Returns:
+            Formatted string with caller profile, personality, and recent call summaries
+        """
+        try:
+            context_parts = []
+            
+            # 1. Get caller profile
+            profile = self.get_or_create_caller_profile(user_id)
+            if profile:
+                context_parts.append("=== CALLER PROFILE ===")
+                if profile.get("preferred_name"):
+                    context_parts.append(f"Name: {profile['preferred_name']}")
+                context_parts.append(f"Total Calls: {profile.get('total_calls', 0)}")
+                context_parts.append(f"First Call: {profile.get('first_call_date', 'Unknown')}")
+                context_parts.append(f"Last Call: {profile.get('last_call_date', 'Unknown')}")
+                
+                if profile.get("preferences"):
+                    context_parts.append(f"Preferences: {json.dumps(profile['preferences'])}")
+                if profile.get("context"):
+                    context_parts.append(f"Context: {json.dumps(profile['context'])}")
+                context_parts.append("")
+            
+            # 2. Get personality averages
+            personality = self.get_personality_averages(user_id)
+            if personality:
+                from app.personality import PersonalityTracker
+                tracker = PersonalityTracker(None)
+                context_parts.append(tracker.format_personality_summary(personality))
+                context_parts.append("")
+            
+            # 3. Get recent call summaries
+            summaries = self.search_call_summaries(user_id, limit=3)
+            if summaries:
+                context_parts.append("=== RECENT CALL SUMMARIES ===")
+                for i, summary in enumerate(summaries, 1):
+                    context_parts.append(f"\nCall {i} ({summary.get('call_date', 'Unknown')}):")
+                    context_parts.append(f"  Summary: {summary.get('summary', 'N/A')}")
+                    if summary.get('key_topics'):
+                        context_parts.append(f"  Topics: {', '.join(summary['key_topics'])}")
+                    if summary.get('key_variables'):
+                        context_parts.append(f"  Key Info: {json.dumps(summary['key_variables'])}")
+                    context_parts.append(f"  Sentiment: {summary.get('sentiment', 'neutral')}")
+                context_parts.append("")
+            
+            return "\n".join(context_parts)
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to build caller context: {e}")
+            return ""
