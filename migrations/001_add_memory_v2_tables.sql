@@ -27,12 +27,7 @@ CREATE TABLE IF NOT EXISTS call_summaries (
     -- Vector embedding for similarity search
     embedding vector(768),
     
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    
-    -- Indexes for fast lookup
-    INDEX idx_call_summaries_user_id (user_id),
-    INDEX idx_call_summaries_call_date (call_date DESC),
-    INDEX idx_call_summaries_embedding USING ivfflat (embedding vector_cosine_ops)
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 -- 2. Caller Profiles Table
@@ -51,10 +46,7 @@ CREATE TABLE IF NOT EXISTS caller_profiles (
     context JSONB DEFAULT '{}'::jsonb,
     
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    
-    INDEX idx_caller_profiles_user_id (user_id),
-    INDEX idx_caller_profiles_last_call (last_call_date DESC)
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 -- 3. Personality Metrics Table (per-call measurements)
@@ -83,11 +75,7 @@ CREATE TABLE IF NOT EXISTS personality_metrics (
     satisfaction_level FLOAT CHECK (satisfaction_level >= 0 AND satisfaction_level <= 100),
     urgency_level FLOAT CHECK (urgency_level >= 0 AND urgency_level <= 100),
     
-    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-    
-    INDEX idx_personality_metrics_user_id (user_id),
-    INDEX idx_personality_metrics_call_id (call_id),
-    INDEX idx_personality_metrics_measured_at (measured_at DESC)
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 -- 4. Personality Averages Table (running calculations)
@@ -114,11 +102,26 @@ CREATE TABLE IF NOT EXISTS personality_averages (
     recent_urgency FLOAT,
     
     -- Trend indicators
-    satisfaction_trend VARCHAR(20), -- 'improving', 'stable', 'declining'
-    frustration_trend VARCHAR(20),
-    
-    INDEX idx_personality_averages_last_updated (last_updated DESC)
+    satisfaction_trend VARCHAR(20),
+    frustration_trend VARCHAR(20)
 );
+
+-- Create indexes for fast lookup (AFTER tables are created)
+CREATE INDEX IF NOT EXISTS idx_call_summaries_user_id ON call_summaries(user_id);
+CREATE INDEX IF NOT EXISTS idx_call_summaries_call_date ON call_summaries(call_date DESC);
+
+CREATE INDEX IF NOT EXISTS idx_caller_profiles_user_id ON caller_profiles(user_id);
+CREATE INDEX IF NOT EXISTS idx_caller_profiles_last_call ON caller_profiles(last_call_date DESC);
+
+CREATE INDEX IF NOT EXISTS idx_personality_metrics_user_id ON personality_metrics(user_id);
+CREATE INDEX IF NOT EXISTS idx_personality_metrics_call_id ON personality_metrics(call_id);
+CREATE INDEX IF NOT EXISTS idx_personality_metrics_measured_at ON personality_metrics(measured_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_personality_averages_last_updated ON personality_averages(last_updated DESC);
+
+-- Note: IVFFLAT index for vector similarity should be created AFTER data population
+-- Uncomment and run this after you have some data:
+-- CREATE INDEX idx_call_summaries_embedding ON call_summaries USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 
 -- Functions to update personality averages
 
@@ -203,6 +206,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS personality_metrics_insert_trigger ON personality_metrics;
 CREATE TRIGGER personality_metrics_insert_trigger
 AFTER INSERT ON personality_metrics
 FOR EACH ROW
