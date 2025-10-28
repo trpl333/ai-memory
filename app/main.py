@@ -667,9 +667,18 @@ async def get_memories(
     limit: int = 50,
     memory_type: Optional[str] = None,
     user_id: Optional[str] = None,
+    customer_id: int = Depends(validate_jwt),
     mem_store: MemoryStore = Depends(get_memory_store)
 ):
+    """🔐 Week 2: Now requires JWT authentication"""
+    logger.info(f"🔐 JWT validated: customer_id={customer_id}")
+    
     try:
+        # 🔐 Set tenant context for RLS (psycopg2 style)
+        with mem_store.conn.cursor() as cur:
+            cur.execute("SET app.current_tenant = %s", (customer_id,))
+        logger.debug(f"✅ Tenant context set to customer_id={customer_id}")
+        
         if user_id:
             memories = mem_store.get_user_memories(user_id, limit=limit, include_shared=True)
         else:
@@ -682,10 +691,19 @@ async def get_memories(
 @app.post("/v1/memories")
 async def store_memory(
     memory: MemoryObject,
+    customer_id: int = Depends(validate_jwt),
     mem_store: MemoryStore = Depends(get_memory_store)
 ):
+    """🔐 Week 2: Now requires JWT authentication"""
+    logger.info(f"🔐 JWT validated: customer_id={customer_id}")
+    
     import json
     try:
+        # 🔐 Set tenant context for RLS (psycopg2 style)
+        with mem_store.conn.cursor() as cur:
+            cur.execute("SET app.current_tenant = %s", (customer_id,))
+        logger.debug(f"✅ Tenant context set to customer_id={customer_id}")
+        
         if isinstance(memory.value, dict):
             # Ensure structured JSON (like prompt_blocks) is stored correctly
             memory.value = json.dumps(memory.value, ensure_ascii=False)
@@ -725,9 +743,18 @@ async def delete_memory(
 async def store_user_memory(
     memory: MemoryObject,
     user_id: str,
+    customer_id: int = Depends(validate_jwt),
     mem_store: MemoryStore = Depends(get_memory_store)
 ):
+    """🔐 Week 2: Now requires JWT authentication"""
+    logger.info(f"🔐 JWT validated: customer_id={customer_id}")
+    
     try:
+        # 🔐 Set tenant context for RLS (psycopg2 style)
+        with mem_store.conn.cursor() as cur:
+            cur.execute("SET app.current_tenant = %s", (customer_id,))
+        logger.debug(f"✅ Tenant context set to customer_id={customer_id}")
+        
         memory_id = mem_store.write(
             memory.type, memory.key, memory.value,
             user_id=user_id, scope="user",
@@ -762,9 +789,18 @@ async def get_user_memories(
     query: str = "",
     limit: int = 10,
     include_shared: bool = True,
+    customer_id: int = Depends(validate_jwt),
     mem_store: MemoryStore = Depends(get_memory_store)
 ):
+    """🔐 Week 2: Now requires JWT authentication"""
+    logger.info(f"🔐 JWT validated: customer_id={customer_id}")
+    
     try:
+        # 🔐 Set tenant context for RLS (psycopg2 style)
+        with mem_store.conn.cursor() as cur:
+            cur.execute("SET app.current_tenant = %s", (customer_id,))
+        logger.debug(f"✅ Tenant context set to customer_id={customer_id}")
+        
         if query:
             memories = mem_store.search(query, user_id=user_id, k=limit, include_shared=include_shared)
         else:
