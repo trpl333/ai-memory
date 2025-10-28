@@ -1,6 +1,6 @@
 # NeuroSphere Multi-Project Architecture
-**Last Updated:** October 23, 2025  
-**Version:** 1.3.2 - AI-Memory Endpoint Alignment & Backward Compatibility
+**Last Updated:** October 28, 2025  
+**Version:** 1.3.3 - Backward Compatibility Shims Live in Production
 
 > **⚠️ IMPORTANT**: This file is shared across ChatStack, AI-Memory, LeadFlowTracker, and NeuroSphere Send Text projects.  
 > When making changes, update the version number and commit to GitHub so all projects can sync.
@@ -83,10 +83,12 @@ POST /v1/chat/completions           - OpenAI-compatible chat endpoint
 GET  /v1/tools                      - List available tools
 POST /v1/tools/{tool_name}          - Execute specific tool
 
-# Legacy Endpoints (DEPRECATED - Backward Compatibility Shim)
-# ⚠️ ChatStack currently uses these, but should migrate to /v1 or /v2
-POST /memory/store                  - DEPRECATED: Use /v1/memories instead
-POST /memory/retrieve               - DEPRECATED: Use /v2/context/enriched (10x faster!)
+# Legacy Endpoints ✅ LIVE IN PRODUCTION (Backward Compatibility Shims)
+# ✅ Deployed Oct 28, 2025 - ChatStack works NOW via these endpoints
+# ⚠️ TEMPORARY - ChatStack should migrate to /v2 for 10x performance improvement
+POST /memory/store                  - ✅ WORKING: Forwards to /v1/memories
+POST /memory/retrieve               - ✅ WORKING: Forwards to /v1/memories/user/{user_id}
+                                     - Migration Path: Use /v2/context/enriched (10x faster!)
 
 # Memory V2 API ✅ COMPLETE & DEPLOYED (Oct 23, 2025)
 # 🚀 All 6 REST endpoints implemented, tested, and running in production
@@ -406,16 +408,28 @@ DATABASE_URL=postgresql://...
 
 ## 📚 Key Learnings
 
-### API Endpoint Mismatches (Oct 23, 2025)
-**Issue:** ChatStack was calling wrong AI-Memory endpoints:
-- ❌ `POST /memory/retrieve` (404)
-- ❌ `POST /memory/store` (404)
+### API Endpoint Mismatches & Resolution (Oct 23-28, 2025)
+**Issue Discovered (Oct 23):** ChatStack was calling endpoints that didn't exist:
+- ❌ ChatStack calling: `POST /memory/retrieve` → 404 Not Found
+- ❌ ChatStack calling: `POST /memory/store` → 404 Not Found
+- ✅ AI-Memory has: `/v1/memories/*` and `/v2/*` endpoints
 
-**Fix:** Updated to correct endpoints:
-- ✅ `GET /v1/memories`
-- ✅ `POST /v1/memories`
+**Root Cause:** API evolution - AI-Memory upgraded from legacy `/memory/*` to modern `/v1/*` and `/v2/*` endpoints, but ChatStack code wasn't updated.
 
-**Lesson:** Always check this file before integrating. Keep endpoint specs up-to-date!
+**Solution Implemented (Oct 28):**
+- ✅ Added backward compatibility shims in `app/main.py`:
+  - `POST /memory/store` → forwards to `mem_store.write()` (V1 storage)
+  - `POST /memory/retrieve` → forwards to `mem_store.get_user_memories()` (V1 retrieval)
+- ✅ Deployed to production: http://209.38.143.71:8100
+- ✅ Verified working with test calls
+- ✅ Created `CHATSTACK_MIGRATION_GUIDE.md` for future V2 migration
+
+**Current Status:**
+- 🟢 ChatStack works NOW with zero code changes (backward compat active)
+- 📖 Migration guide ready for 10x performance upgrade to V2
+- ⏱️ Future migration path: `/v2/context/enriched` provides <1 second context retrieval
+
+**Lesson:** When APIs evolve, add backward compatibility shims to prevent breaking changes across microservices. Document migration paths for performance improvements.
 
 ---
 

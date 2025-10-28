@@ -1,7 +1,23 @@
-# Peterson Family Insurance AI Phone System
+# AI-Memory Service (NeuroSphere Ecosystem)
 
 ## Overview
-This project is an AI-powered phone system for Peterson Family Insurance, featuring the AI agent "Samantha." Built on NeuroSphere Orchestrator and FastAPI, the system provides intelligent call handling with persistent memory, aiming for rapid 2-2.5 second response times. It ensures conversation continuity via an HTTP-based AI-Memory service, integrates external tools for dynamic actions, and employs safety modes for content filtering. The orchestrator acts as middleware between Twilio voice calls and Language Learning Models (LLMs), enhancing conversations through memory retrieval, prompt engineering, and extensible tool functionality. The system has successfully migrated to a microservices architecture and utilizes OpenAI's Realtime API.
+AI-Memory is a shared microservice providing persistent memory storage, call summarization, and personality tracking for the NeuroSphere ecosystem (ChatStack, LeadFlowTracker, NeuroSphere Send Text). Built on FastAPI with PostgreSQL and pgvector, it implements a Memory V2 system that delivers 10x faster retrieval (<1 second vs 2-3 seconds) through AI-generated call summaries instead of raw conversation data. The service offers REST API endpoints for memory storage, retrieval, and intelligent context enrichment.
+
+## Recent Changes
+
+### October 28, 2025 - Backward Compatibility Shims Deployed ✅
+**Issue:** ChatStack was calling legacy `/memory/store` and `/memory/retrieve` endpoints that no longer existed after API evolution to `/v1/*` and `/v2/*`.
+
+**Solution:** Added backward compatibility shims in production:
+- `POST /memory/store` → forwards to V1 memory storage (`mem_store.write()`)
+- `POST /memory/retrieve` → forwards to V1 memory retrieval (`mem_store.get_user_memories()`)
+
+**Impact:** ChatStack now works with zero code changes. Migration guide created for future V2 upgrade (10x performance).
+
+**Documentation:**
+- `CHATSTACK_MIGRATION_GUIDE.md` - Step-by-step V2 migration path
+- `MULTI_PROJECT_ARCHITECTURE.md` v1.3.3 - Updated endpoint mapping
+- Production: http://209.38.143.71:8100 (verified working)
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
