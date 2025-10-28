@@ -5,6 +5,47 @@ AI-Memory is a shared microservice providing persistent memory storage, call sum
 
 ## Recent Changes
 
+### October 28, 2025 - Phase 1 Week 1: Multi-Tenant Database Architecture (IN PROGRESS) 🚀
+**Goal:** Transform AI-Memory from single-tenant to multi-tenant SaaS with PostgreSQL Row-Level Security
+
+**Completed:**
+- ✅ Multi-tenant migration SQL created (`migrations/002_add_customer_id_for_multi_tenant.sql`)
+  - Adds `customer_id INTEGER NOT NULL` to all 5 tables (memories, call_summaries, caller_profiles, personality_metrics, personality_averages)
+  - Migrates existing data to customer_id=1 (Peterson Insurance)
+  - Enables PostgreSQL Row-Level Security (RLS) on all tables
+  - Creates RLS policies for automatic tenant isolation
+  - Updates indexes, constraints, and functions for multi-tenancy
+- ✅ Python migration runner created (`run_migration.py`)
+  - Dry-run mode for safe preview
+  - Execute mode with verification
+  - Comprehensive error handling
+- ✅ Migration documentation (`WEEK1_MIGRATION_GUIDE.md`)
+  - Step-by-step execution guide for production server
+  - Pre-flight checklist and testing procedures
+  - Rollback procedures and troubleshooting
+- ✅ PyJWT library installed for JWT authentication
+- ✅ RLS middleware created (`app/middleware/tenant_context.py`)
+  - Sets PostgreSQL session variable for RLS enforcement
+  - Automatic tenant isolation at database level
+- ✅ JWT auth middleware created (`app/middleware/auth.py`)
+  - Validates JWT tokens from ChatStack
+  - Extracts customer_id from signed tokens
+  - Prevents tenant spoofing attacks
+
+**Next Steps (Week 1):**
+- ⏳ Execute migration on production database (209.38.143.71)
+- ⏳ Verify RLS policies block cross-tenant queries
+- ⏳ Test migration with production data
+
+**Architecture:** ChatGPT-5 validated as "80% production-ready" → targeting 100% with RLS + JWT + tests
+
+**Documentation:**
+- `NEUROSPHERE_MULTI_TENANT_ARCHITECTURE.md` - Full architectural design
+- `IMPLEMENTATION_PLAN_PHASE1.md` - 4-week execution plan
+- `WEEK1_MIGRATION_GUIDE.md` - Production migration guide
+
+---
+
 ### October 28, 2025 - Backward Compatibility Shims Deployed ✅
 **Issue:** ChatStack was calling legacy `/memory/store` and `/memory/retrieve` endpoints that no longer existed after API evolution to `/v1/*` and `/v2/*`.
 

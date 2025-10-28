@@ -75,3 +75,5 @@ gunicorn
 notion-client
 psycopg2-binary
 fastapi>=0.115.0
+pydantic
+pyjwt
