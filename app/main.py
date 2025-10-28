@@ -34,6 +34,7 @@ from app.llm import chat as llm_chat, chat_realtime_stream, _get_llm_config, val
 from app.memory import MemoryStore
 from app.packer import pack_prompt, should_remember, extract_carry_kit_items, detect_safety_triggers
 from app.tools import tool_dispatcher, parse_tool_calls, execute_tool_calls
+from app.middleware.auth import validate_jwt  # 🔐 Week 2: JWT authentication
 
 # -----------------------------------------------------------------------------
 # Logging
@@ -970,16 +971,25 @@ async def search_call_summaries_v2(
 @app.post("/memory/store")
 async def legacy_memory_store(
     request: Request,
+    customer_id: int = Depends(validate_jwt),
     mem_store: MemoryStore = Depends(get_memory_store)
 ):
     """
     DEPRECATED: Backward compatibility shim for ChatStack.
     Forwards to /v1/memories endpoint.
     ChatStack should migrate to /v1/memories or /v2/* endpoints.
+    
+    🔐 Week 2: Now requires JWT authentication
     """
     logger.warning("⚠️ Legacy endpoint /memory/store called - ChatStack should migrate to /v1 or /v2")
+    logger.info(f"🔐 JWT validated: customer_id={customer_id}")
     
     try:
+        # 🔐 Set tenant context for RLS (psycopg2 style)
+        with mem_store.conn.cursor() as cur:
+            cur.execute("SET app.current_tenant = %s", (customer_id,))
+        logger.debug(f"✅ Tenant context set to customer_id={customer_id}")
+        
         payload = await request.json()
         user_id = payload.get("user_id")
         role = payload.get("role", "user")
@@ -990,6 +1000,7 @@ async def legacy_memory_store(
         memory_value = {"content": content, "role": role, "metadata": metadata}
         
         # Store using V1 logic (mem_store.write handles JSON encoding)
+        # RLS automatically enforces customer_id filter
         memory_id = mem_store.write(
             memory_type="conversation",  # Fixed: parameter name is memory_type not type
             key=f"{role}:{user_id}",
@@ -1013,22 +1024,32 @@ async def legacy_memory_store(
 @app.post("/memory/retrieve")
 async def legacy_memory_retrieve(
     request: Request,
+    customer_id: int = Depends(validate_jwt),
     mem_store: MemoryStore = Depends(get_memory_store)
 ):
     """
     DEPRECATED: Backward compatibility shim for ChatStack.
     Forwards to /v1/memories/user/{user_id} endpoint.
     ChatStack should migrate to /v2/context/enriched for 10x faster retrieval.
+    
+    🔐 Week 2: Now requires JWT authentication
     """
     logger.warning("⚠️ Legacy endpoint /memory/retrieve called - ChatStack should use /v2/context/enriched for 10x faster retrieval")
+    logger.info(f"🔐 JWT validated: customer_id={customer_id}")
     
     try:
+        # 🔐 Set tenant context for RLS (psycopg2 style)
+        with mem_store.conn.cursor() as cur:
+            cur.execute("SET app.current_tenant = %s", (customer_id,))
+        logger.debug(f"✅ Tenant context set to customer_id={customer_id}")
+        
         payload = await request.json()
         user_id = payload.get("user_id")
         limit = payload.get("limit", 500)
         thread_id = payload.get("thread_id")
         
         # Use V1 logic to get memories
+        # RLS automatically enforces customer_id filter
         memories = mem_store.get_user_memories(user_id, limit=limit, include_shared=True)
         
         # Return in old format
