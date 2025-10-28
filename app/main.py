@@ -965,6 +965,83 @@ async def search_call_summaries_v2(
         return {"success": False, "error": str(e)}
 
 # -----------------------------------------------------------------------------
+# Backward Compatibility Shim for ChatStack (DEPRECATED - use /v1 or /v2)
+# -----------------------------------------------------------------------------
+@app.post("/memory/store")
+async def legacy_memory_store(
+    request: Request,
+    mem_store: MemoryStore = Depends(get_memory_store)
+):
+    """
+    DEPRECATED: Backward compatibility shim for ChatStack.
+    Forwards to /v1/memories endpoint.
+    ChatStack should migrate to /v1/memories or /v2/* endpoints.
+    """
+    logger.warning("⚠️ Legacy endpoint /memory/store called - ChatStack should migrate to /v1 or /v2")
+    
+    try:
+        payload = await request.json()
+        user_id = payload.get("user_id")
+        role = payload.get("role", "user")
+        content = payload.get("content", "")
+        metadata = payload.get("metadata", {})
+        
+        # Convert old format to MemoryObject format
+        memory_value = {"content": content, "role": role, "metadata": metadata}
+        
+        # Store using V1 logic (mem_store.write handles JSON encoding)
+        memory_id = mem_store.write(
+            memory_type="conversation",  # Fixed: parameter name is memory_type not type
+            key=f"{role}:{user_id}",
+            value=memory_value,  # Pass dict directly - mem_store.write will JSON-encode it
+            user_id=user_id,
+            scope="user",
+            ttl_days=365,
+            source="chatstack_legacy"
+        )
+        
+        # Return in old format
+        return {
+            "success": True,
+            "id": memory_id,
+            "memory_id": memory_id
+        }
+    except Exception as e:
+        logger.error(f"Legacy memory store failed: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
+
+@app.post("/memory/retrieve")
+async def legacy_memory_retrieve(
+    request: Request,
+    mem_store: MemoryStore = Depends(get_memory_store)
+):
+    """
+    DEPRECATED: Backward compatibility shim for ChatStack.
+    Forwards to /v1/memories/user/{user_id} endpoint.
+    ChatStack should migrate to /v2/context/enriched for 10x faster retrieval.
+    """
+    logger.warning("⚠️ Legacy endpoint /memory/retrieve called - ChatStack should use /v2/context/enriched for 10x faster retrieval")
+    
+    try:
+        payload = await request.json()
+        user_id = payload.get("user_id")
+        limit = payload.get("limit", 500)
+        thread_id = payload.get("thread_id")
+        
+        # Use V1 logic to get memories
+        memories = mem_store.get_user_memories(user_id, limit=limit, include_shared=True)
+        
+        # Return in old format
+        return {
+            "success": True,
+            "memories": memories,
+            "count": len(memories)
+        }
+    except Exception as e:
+        logger.error(f"Legacy memory retrieve failed: {e}", exc_info=True)
+        return {"success": False, "error": str(e), "memories": []}
+
+# -----------------------------------------------------------------------------
 # OpenAI Realtime API Bridge for Twilio Media Streams
 # -----------------------------------------------------------------------------
 

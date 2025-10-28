@@ -1,6 +1,6 @@
 # NeuroSphere Multi-Project Architecture
 **Last Updated:** October 23, 2025  
-**Version:** 1.3.1 - AI-Memory V2 REST API Complete & Deployed
+**Version:** 1.3.2 - AI-Memory Endpoint Alignment & Backward Compatibility
 
 > **⚠️ IMPORTANT**: This file is shared across ChatStack, AI-Memory, LeadFlowTracker, and NeuroSphere Send Text projects.  
 > When making changes, update the version number and commit to GitHub so all projects can sync.
@@ -66,7 +66,7 @@ GET  /                              - Service info & status
 GET  /admin                         - Admin interface
 GET  /health                        - Health check (DB status)
 
-# Memory V1 API (Legacy)
+# Memory V1 API (Current - Stable)
 GET  /v1/memories                   - Retrieve memories (params: user_id, limit, memory_type)
 POST /v1/memories                   - Store new memory
 POST /v1/memories/user              - Store user-specific memory
@@ -82,6 +82,11 @@ POST /v1/chat/completions           - OpenAI-compatible chat endpoint
 # Tools
 GET  /v1/tools                      - List available tools
 POST /v1/tools/{tool_name}          - Execute specific tool
+
+# Legacy Endpoints (DEPRECATED - Backward Compatibility Shim)
+# ⚠️ ChatStack currently uses these, but should migrate to /v1 or /v2
+POST /memory/store                  - DEPRECATED: Use /v1/memories instead
+POST /memory/retrieve               - DEPRECATED: Use /v2/context/enriched (10x faster!)
 
 # Memory V2 API ✅ COMPLETE & DEPLOYED (Oct 23, 2025)
 # 🚀 All 6 REST endpoints implemented, tested, and running in production
