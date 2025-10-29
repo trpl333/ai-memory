@@ -5,6 +5,29 @@ AI-Memory is a shared microservice providing persistent memory storage, call sum
 
 ## Recent Changes
 
+### October 29, 2025 - **CRITICAL FIX**: Multi-Tenant Data Isolation 🚨
+**Issue:** MemoryStore was NOT saving `customer_id` to database, breaking tenant isolation!
+
+**Problem Discovered by Architect Review:**
+- `MemoryStore.write()` INSERT statement **omitted customer_id column**
+- All new memories/summaries/metrics defaulted to `customer_id=1` (Peterson)
+- JWT validation worked, but data still went into wrong tenant!
+- Result: All tenants' data mixed into Peterson's account
+
+**Fix Applied:**
+1. ✅ Updated `MemoryStore.write()` to accept `customer_id` parameter
+2. ✅ Added `customer_id` column to INSERT INTO memories statement
+3. ✅ Updated `store_call_summary()` to include `customer_id`
+4. ✅ Updated `store_personality_metrics()` to include `customer_id`
+5. ✅ Set `app.current_tenant` before all database operations
+6. ✅ Updated legacy `/memory/store` endpoint to pass `customer_id` from JWT
+
+**Deployment Status:** Code ready, needs production deployment via Docker rebuild
+
+**Impact:** Multi-tenant isolation NOW WORKS - each customer's data properly segregated
+
+---
+
 ### October 28, 2025 - Phase 1 Week 1: Multi-Tenant Database Architecture ✅ COMPLETE!
 **Goal:** Transform AI-Memory from single-tenant to multi-tenant SaaS with PostgreSQL Row-Level Security
 

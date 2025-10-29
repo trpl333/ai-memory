@@ -1076,7 +1076,8 @@ async def legacy_memory_store(
             user_id=user_id,
             scope="user",
             ttl_days=365,
-            source="chatstack_legacy"
+            source="chatstack_legacy",
+            customer_id=customer_id  # ← Pass tenant ID from JWT
         )
         
         # Return in old format

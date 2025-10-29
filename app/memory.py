@@ -96,7 +96,7 @@ class MemoryStore:
             logger.error(f"Failed to verify/install pgvector extension: {e}")
             raise
 
-    def write(self, memory_type: str, key: str, value: Dict[str, Any], user_id: Optional[str] = None, scope: str = "user", ttl_days: int = 365, source: str = "orchestrator") -> str:
+    def write(self, memory_type: str, key: str, value: Dict[str, Any], user_id: Optional[str] = None, scope: str = "user", ttl_days: int = 365, source: str = "orchestrator", customer_id: int = 1) -> str:
         """
         Store a memory object in the database.
         
@@ -108,6 +108,7 @@ class MemoryStore:
             scope: Memory scope ('user', 'shared', 'global')
             ttl_days: Time to live in days
             source: Source of the memory
+            customer_id: Tenant identifier for multi-tenant isolation
             
         Returns:
             UUID of the stored memory
@@ -118,13 +119,16 @@ class MemoryStore:
             embedding = embed(content_text).tolist()
             
             with self.conn.cursor() as cur:
+                # Set tenant context for RLS
+                cur.execute("SET app.current_tenant = %s", (customer_id,))
+                
                 cur.execute(
                     """
-                    INSERT INTO memories (type, k, value_json, embedding, user_id, scope, ttl_days, source)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO memories (customer_id, type, k, value_json, embedding, user_id, scope, ttl_days, source)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
-                    (memory_type, key, Json(value), embedding, user_id, scope, ttl_days, source)
+                    (customer_id, memory_type, key, Json(value), embedding, user_id, scope, ttl_days, source)
                 )
                 result = cur.fetchone()
                 if result:
@@ -133,7 +137,7 @@ class MemoryStore:
                     raise Exception("Failed to get memory ID")
                 
             scope_info = f" [{scope}]" + (f" user:{user_id}" if user_id else "")
-            logger.info(f"Stored memory: {memory_type}:{key} with ID {memory_id}{scope_info}")
+            logger.info(f"Stored memory: {memory_type}:{key} with ID {memory_id}{scope_info} [customer:{customer_id}]")
             return str(memory_id)
             
         except Exception as e:
@@ -431,13 +435,14 @@ class MemoryStore:
     # MEMORY V2: Call Summaries, Caller Profiles, Personality Tracking
     # =========================================================================
     
-    def store_call_summary(self, summary_data: Dict[str, Any]) -> str:
+    def store_call_summary(self, summary_data: Dict[str, Any], customer_id: int = 1) -> str:
         """
         Store a call summary in the database.
         
         Args:
             summary_data: Dictionary with call_id, user_id, summary, key_topics,
                          key_variables, sentiment, duration_seconds, resolution_status
+            customer_id: Tenant identifier for multi-tenant isolation
                          
         Returns:
             UUID of the stored summary
@@ -448,17 +453,21 @@ class MemoryStore:
             embedding = embed(summary_text).tolist() if summary_text else None
             
             with self.conn.cursor() as cur:
+                # Set tenant context for RLS
+                cur.execute("SET app.current_tenant = %s", (customer_id,))
+                
                 cur.execute(
                     """
                     INSERT INTO call_summaries (
-                        call_id, user_id, call_date, summary, key_topics,
+                        customer_id, call_id, user_id, call_date, summary, key_topics,
                         key_variables, sentiment, duration_seconds, 
                         resolution_status, embedding
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
                     (
+                        customer_id,
                         summary_data["call_id"],
                         summary_data["user_id"],
                         summary_data.get("call_date", datetime.now()),
@@ -474,37 +483,42 @@ class MemoryStore:
                 result = cur.fetchone()
                 summary_id = result[0] if result else None
             
-            logger.info(f"✅ Stored call summary {summary_data['call_id']} for user {summary_data['user_id']}")
+            logger.info(f"✅ Stored call summary {summary_data['call_id']} for user {summary_data['user_id']} [customer:{customer_id}]")
             return str(summary_id)
             
         except Exception as e:
             logger.error(f"❌ Failed to store call summary: {e}")
             raise
     
-    def store_personality_metrics(self, metrics_data: Dict[str, Any]) -> str:
+    def store_personality_metrics(self, metrics_data: Dict[str, Any], customer_id: int = 1) -> str:
         """
         Store personality metrics for a call.
         
         Args:
             metrics_data: Dictionary with user_id, call_id, and all personality scores
+            customer_id: Tenant identifier for multi-tenant isolation
             
         Returns:
             UUID of the stored metrics
         """
         try:
             with self.conn.cursor() as cur:
+                # Set tenant context for RLS
+                cur.execute("SET app.current_tenant = %s", (customer_id,))
+                
                 cur.execute(
                     """
                     INSERT INTO personality_metrics (
-                        user_id, call_id, measured_at,
+                        customer_id, user_id, call_id, measured_at,
                         openness, conscientiousness, extraversion, agreeableness, neuroticism,
                         formality, directness, detail_orientation, patience, technical_comfort,
                         frustration_level, satisfaction_level, urgency_level
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
                     (
+                        customer_id,
                         metrics_data["user_id"],
                         metrics_data["call_id"],
                         metrics_data.get("measured_at", datetime.now()),
@@ -526,7 +540,7 @@ class MemoryStore:
                 result = cur.fetchone()
                 metrics_id = result[0] if result else None
             
-            logger.info(f"✅ Stored personality metrics for user {metrics_data['user_id']}, call {metrics_data['call_id']}")
+            logger.info(f"✅ Stored personality metrics for user {metrics_data['user_id']}, call {metrics_data['call_id']} [customer:{customer_id}]")
             return str(metrics_id)
             
         except Exception as e:
