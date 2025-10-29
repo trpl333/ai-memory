@@ -620,6 +620,46 @@ class MemoryStore:
             logger.error(f"❌ Failed to update caller profile: {e}")
             return False
     
+    def get_all_caller_profiles(self, limit: int = 100) -> List[Dict[str, Any]]:
+        """
+        Get all caller profiles (RLS automatically filters by customer_id).
+        
+        Args:
+            limit: Maximum number of profiles to return
+            
+        Returns:
+            List of caller profile dictionaries
+        """
+        try:
+            with self.conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute(
+                    """
+                    SELECT 
+                        user_id, 
+                        preferred_name, 
+                        total_calls, 
+                        first_call_date, 
+                        last_call_date,
+                        preferences,
+                        context,
+                        created_at,
+                        updated_at
+                    FROM caller_profiles
+                    ORDER BY last_call_date DESC
+                    LIMIT %s
+                    """,
+                    (limit,)
+                )
+                rows = cur.fetchall()
+            
+            profiles = [dict(row) for row in rows]
+            logger.info(f"✅ Retrieved {len(profiles)} caller profiles")
+            return profiles
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to get all caller profiles: {e}")
+            return []
+    
     def get_personality_averages(self, user_id: str) -> Optional[Dict[str, Any]]:
         """
         Get personality averages for a caller.

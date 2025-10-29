@@ -914,6 +914,38 @@ async def get_call_summaries_v2(
         logger.error(f"Failed to get call summaries: {e}", exc_info=True)
         return {"success": False, "error": str(e)}
 
+@app.get("/v2/profiles")
+async def get_all_caller_profiles_v2(
+    limit: int = 100,
+    customer_id: int = Depends(validate_jwt),
+    mem_store: MemoryStore = Depends(get_memory_store)
+):
+    """
+    Get all caller profiles for the authenticated customer.
+    
+    🔐 Requires JWT authentication
+    🎯 RLS automatically filters by customer_id
+    """
+    logger.info(f"🔐 JWT validated: customer_id={customer_id}")
+    
+    try:
+        # Set tenant context for RLS
+        with mem_store.conn.cursor() as cur:
+            cur.execute("SET app.current_tenant = %s", (customer_id,))
+        
+        # Get profiles (RLS filters automatically)
+        profiles = mem_store.get_all_caller_profiles(limit=limit)
+        
+        return {
+            "success": True,
+            "customer_id": customer_id,
+            "profiles": profiles,
+            "total": len(profiles)
+        }
+    except Exception as e:
+        logger.error(f"Failed to get caller profiles: {e}", exc_info=True)
+        return {"success": False, "error": str(e)}
+
 @app.get("/v2/profile/{user_id}")
 async def get_caller_profile_v2(
     user_id: str,
