@@ -858,10 +858,22 @@ from app.memory_integration import MemoryV2Integration
 @app.post("/v2/process-call")
 async def process_call_v2(
     request: ProcessCallRequest,
+    customer_id: int = Depends(validate_jwt),
     mem_store: MemoryStore = Depends(get_memory_store)
 ):
-    """Process completed call - auto-summarize and track personality"""
+    """
+    Process completed call - auto-summarize and track personality
+    
+    🔐 Requires JWT authentication
+    🎯 RLS automatically filters by customer_id
+    """
+    logger.info(f"🔐 JWT validated: customer_id={customer_id}")
+    
     try:
+        # Set tenant context for RLS
+        with mem_store.conn.cursor() as cur:
+            cur.execute("SET app.current_tenant = %s", (customer_id,))
+        
         memory_v2 = MemoryV2Integration(mem_store, llm_chat)
         result = memory_v2.process_completed_call(
             conversation_history=[(msg[0], msg[1]) for msg in request.conversation_history],
@@ -876,10 +888,22 @@ async def process_call_v2(
 @app.post("/v2/context/enriched")
 async def get_enriched_context_v2(
     request: EnrichedContextRequest,
+    customer_id: int = Depends(validate_jwt),
     mem_store: MemoryStore = Depends(get_memory_store)
 ):
-    """Get enriched caller context (fast - <1 second)"""
+    """
+    Get enriched caller context (fast - <1 second)
+    
+    🔐 Requires JWT authentication
+    🎯 RLS automatically filters by customer_id
+    """
+    logger.info(f"🔐 JWT validated: customer_id={customer_id}")
+    
     try:
+        # Set tenant context for RLS
+        with mem_store.conn.cursor() as cur:
+            cur.execute("SET app.current_tenant = %s", (customer_id,))
+        
         memory_v2 = MemoryV2Integration(mem_store, llm_chat)
         # Note: num_summaries is currently hardcoded in the method (default: 5)
         context = memory_v2.get_enriched_context_for_call(user_id=request.user_id)
