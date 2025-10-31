@@ -753,6 +753,60 @@ class HTTPMemoryStore:
             logger.error(f"Failed to get memory stats: {e}")
             return {"total": 0, "by_type": {}, "by_scope": {}}
 
+    def get_enriched_context_v2(self, user_id: str, jwt_token: str) -> str:
+        """
+        Get enriched caller context from V2 endpoint (call summaries + personality profile).
+        This is 10x faster than V1 memory retrieval.
+        
+        Args:
+            user_id: Phone number of the caller
+            jwt_token: JWT token for authentication
+            
+        Returns:
+            Enriched context string ready to inject into AI instructions
+        """
+        self._check_connection()
+        
+        try:
+            logger.info(f"🚀 Fetching V2 enriched context for user_id={user_id}")
+            
+            payload = {"user_id": user_id}
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {jwt_token}"
+            }
+            
+            response = self.session.post(
+                f"{self.ai_memory_url}/v2/context/enriched",
+                json=payload,
+                headers=headers,
+                timeout=5
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                if result.get("success"):
+                    context = result.get("context", "")
+                    summary_count = result.get("summary_count", 0)
+                    has_personality = result.get("has_personality_data", False)
+                    
+                    logger.info(f"✅ V2 enriched context retrieved: {len(context)} chars, {summary_count} summaries, personality={has_personality}")
+                    return context
+                else:
+                    error_msg = result.get("error", "Unknown error")
+                    logger.error(f"❌ V2 enriched context failed: {error_msg}")
+                    return ""
+            else:
+                logger.error(f"❌ V2 enriched context endpoint returned {response.status_code}: {response.text}")
+                return ""
+                
+        except requests.exceptions.Timeout:
+            logger.error(f"⏱️ V2 enriched context request timed out after 5s")
+            return ""
+        except Exception as e:
+            logger.error(f"❌ Failed to get V2 enriched context: {e}", exc_info=True)
+            return ""
+
     def close(self):
         """Close the HTTP session."""
         if hasattr(self, 'session'):

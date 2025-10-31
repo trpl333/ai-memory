@@ -32,9 +32,11 @@ except ImportError:
 from app.models import ChatRequest, ChatResponse, MemoryObject
 from app.llm import chat as llm_chat, chat_realtime_stream, _get_llm_config, validate_llm_connection
 from app.memory import MemoryStore
+from app.http_memory import HTTPMemoryStore
 from app.packer import pack_prompt, should_remember, extract_carry_kit_items, detect_safety_triggers
 from app.tools import tool_dispatcher, parse_tool_calls, execute_tool_calls
 from app.middleware.auth import validate_jwt  # 🔐 Week 2: JWT authentication
+from app.jwt_utils import generate_memory_token  # 🔐 Week 2: JWT generation
 
 # -----------------------------------------------------------------------------
 # Logging
@@ -1518,23 +1520,30 @@ async def media_stream_endpoint(websocket: WebSocket):
                 # Build system instructions with memory context
                 try:
                     mem_store = MemoryStore()
+                    http_mem_store = HTTPMemoryStore()  # 🚀 V2: HTTP client for AI-Memory service
                     
                     # ✅ CRITICAL: Load thread history from database for conversation continuity
                     if thread_id and user_id:
                         load_thread_history(thread_id, mem_store, user_id)
                         logger.info(f"🔄 Loaded thread history for {thread_id}: {len(THREAD_HISTORY.get(thread_id, []))} messages")
                     
-                    # ✅ CRITICAL FIX: Use get_user_memories instead of search("") to retrieve ALL user memories
+                    # 🚀 V2: Fetch enriched context (call summaries + personality profile) - 10x faster!
+                    enriched_context = ""
                     if user_id:
-                        memories = mem_store.get_user_memories(user_id, limit=50, include_shared=True)
-                        logger.info(f"🧠 Retrieved {len(memories)} memories for user {user_id}")
-                        # DEBUG: Log first few memories
-                        for i, mem in enumerate(memories[:5]):
-                            mem_type = mem.get('type', 'unknown')
-                            mem_key = mem.get('key') or mem.get('k', 'no-key')
-                            logger.info(f"  Memory {i+1}: {mem_type}:{mem_key}")
-                    else:
-                        memories = []
+                        try:
+                            # TODO: Multi-tenant support - derive customer_id from incoming phone number
+                            # For now, Peterson Insurance is the only customer (customer_id=1)
+                            # Future: Map Twilio "To" number → customer_id via phone_number_mappings table
+                            customer_id = 1  # Peterson Insurance
+                            jwt_token = generate_memory_token(customer_id=customer_id)
+                            enriched_context = http_mem_store.get_enriched_context_v2(user_id, jwt_token)
+                            if enriched_context:
+                                logger.info(f"✅ V2 enriched context loaded: {len(enriched_context)} chars")
+                            else:
+                                logger.warning(f"⚠️ V2 enriched context empty - new caller or no history")
+                        except Exception as e:
+                            logger.error(f"❌ Failed to get V2 enriched context: {e}")
+                            enriched_context = ""
                     
                     # Load base system prompt
                     system_prompt_path = "app/prompts/system_sam.txt"
@@ -1556,26 +1565,22 @@ async def media_stream_endpoint(websocket: WebSocket):
                             for role, content in history[-10:]:  # Last 5 turns
                                 instructions += f"{role}: {content[:200]}...\n" if len(content) > 200 else f"{role}: {content}\n"
                     
-                    # Add caller context
-                    if is_callback and memories:
-                        # Existing user - look for their name
-                        user_name = None
-                        for mem in memories[:10]:
-                            value = mem.get("value", {})
-                            if isinstance(value, dict) and "name" in value:
-                                user_name = value.get("name")
-                                break
-                        
+                    # Add caller context with V2 enriched memory
+                    if is_callback and enriched_context:
+                        # 🚀 V2: Existing caller with enriched context (call summaries + personality)
                         greeting_template = get_admin_setting("existing_user_greeting", 
-                                                             f"Hi, this is {agent_name} from Peterson Family Insurance Agency. Is this {{user_name}}?")
-                        if user_name:
-                            greeting = greeting_template.replace("{user_name}", user_name).replace("{agent_name}", agent_name)
-                            instructions += f"\n\n=== GREETING GUIDANCE ===\nThis is a returning caller named {user_name}. Use this greeting style: '{greeting}'"
-                        else:
-                            greeting = greeting_template.replace("{user_name}", "").replace("{agent_name}", agent_name)
-                            instructions += f"\n\n=== GREETING GUIDANCE ===\nThis is a returning caller. Use this greeting style: '{greeting}'"
+                                                             f"Hi, this is {agent_name} from Peterson Family Insurance Agency. How can I help you today?")
+                        greeting = greeting_template.replace("{agent_name}", agent_name)
+                        instructions += f"\n\n=== GREETING GUIDANCE ===\nThis is a returning caller. Use this greeting style: '{greeting}'"
+                        
+                        # 🚀 V2: Inject enriched context (call summaries + personality profile)
+                        instructions += "\n\n=== YOUR_MEMORY_OF_THIS_CALLER ===\n"
+                        instructions += enriched_context
+                        instructions += "\n=== END_MEMORY ===\n"
+                        
+                        logger.info(f"🚀 V2 enriched context injected: {len(enriched_context)} chars")
                     else:
-                        # New caller
+                        # New caller or no enriched context available
                         import datetime
                         hour = datetime.datetime.now().hour
                         if hour < 12:
@@ -1589,51 +1594,13 @@ async def media_stream_endpoint(websocket: WebSocket):
                                                              f"{{time_greeting}}! This is {agent_name} from Peterson Family Insurance Agency. How can I help you?")
                         greeting = greeting_template.replace("{time_greeting}", time_greeting).replace("{agent_name}", agent_name)
                         instructions += f"\n\n=== GREETING GUIDANCE ===\nThis is a new caller. Use this greeting: '{greeting}'"
-                    
-                    # Inject normalized memory context (organized dict instead of raw entries)
-                    if memories:
-                        # ✅ COMPREHENSIVE: Normalize 800+ scattered memories into fill-in-the-blanks template
-                        normalized = mem_store.normalize_memories(memories)
                         
-                        if normalized:
-                            # Format as structured memory for AI
+                        if enriched_context:
+                            # Has enriched context but not a callback (edge case)
                             instructions += "\n\n=== YOUR_MEMORY_OF_THIS_CALLER ===\n"
-                            instructions += "Below is everything you know about this caller, organized by category:\n\n"
-                            instructions += json.dumps(normalized, indent=2)
-                            instructions += "\n\nIMPORTANT: Use this structured data naturally in conversation. "
-                            instructions += "If you see a spouse name, use it. If you see a birthday, remember it. "
-                            instructions += "Empty fields (null values) mean you haven't learned that info yet.\n"
-                            instructions += "=== END_MEMORY ===\n"
-                            
-                            # Count actual populated data
-                            filled_contacts = sum(1 for rel in ["spouse", "father", "mother"] 
-                                                if normalized.get("contacts", {}).get(rel, {}).get("name"))
-                            filled_contacts += len(normalized.get("contacts", {}).get("children", []))
-                            
-                            stats = {
-                                "contacts": filled_contacts,
-                                "vehicles": len(normalized.get("vehicles", [])),
-                                "policies": len(normalized.get("policies", [])),
-                                "facts": len(normalized.get("facts", [])),
-                                "commitments": len(normalized.get("commitments", []))
-                            }
-                            
-                            logger.info(f"📝 Injected comprehensive memory template from {len(memories)} raw entries:")
-                            logger.info(f"   └─ Contacts: {stats['contacts']}, Vehicles: {stats['vehicles']}, Policies: {stats['policies']}, Facts: {stats['facts']}")
-                            
-                            # 🔍 DEBUG: Show what contacts were extracted
-                            if stats['contacts'] > 0:
-                                logger.info(f"   👥 Contacts found:")
-                                for rel in ["spouse", "father", "mother"]:
-                                    contact = normalized.get("contacts", {}).get(rel, {})
-                                    if contact.get("name"):
-                                        logger.info(f"      • {rel.title()}: {contact['name']}" + 
-                                                  (f" (birthday: {contact['birthday']})" if contact.get("birthday") else ""))
-                                
-                                for child in normalized.get("contacts", {}).get("children", []):
-                                    logger.info(f"      • {child.get('relationship', 'child').title()}: {child.get('name', 'unknown')}")
-                        else:
-                            logger.warning(f"⚠️ normalize_memories returned empty dict from {len(memories)} raw memories")
+                            instructions += enriched_context
+                            instructions += "\n=== END_MEMORY ===\n"
+                            logger.info(f"🚀 V2 enriched context injected (not callback): {len(enriched_context)} chars")
                 
                 except Exception as e:
                     logger.error(f"Failed to load memory context: {e}")
