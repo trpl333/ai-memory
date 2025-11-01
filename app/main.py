@@ -4,19 +4,13 @@ import logging
 from typing import List, Optional, Deque, Tuple, Dict, Any
 from collections import defaultdict, deque
 
-from fastapi import FastAPI, HTTPException, Depends, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
-from starlette.websockets import WebSocketState
 import json
-import base64
-import audioop
-import numpy as np
 import asyncio
-import threading
-from websocket import WebSocketApp
 
 from config_loader import get_secret, get_setting
 import sys
