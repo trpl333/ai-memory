@@ -30,6 +30,7 @@ from app.http_memory import HTTPMemoryStore
 from app.packer import pack_prompt, should_remember, extract_carry_kit_items, detect_safety_triggers
 from app.tools import tool_dispatcher, parse_tool_calls, execute_tool_calls
 from app.middleware.auth import validate_jwt  # 🔐 Week 2: JWT authentication
+from app.jwt_utils import generate_memory_token  # 🔐 Week 2: JWT generation (SHARED with ChatStack)
 
 # -----------------------------------------------------------------------------
 # Logging
