@@ -1,20 +1,0 @@
-[1;36m(EngineCore_0 pid=315)[0;0m INFO 09-05 19:28:16 [gpu_model_runner.py:1953] Starting to load model mistralai/Mistral-7B-Instruct-v0.1...
-[1;36m(EngineCore_0 pid=315)[0;0m INFO 09-05 19:28:17 [gpu_model_runner.py:1985] Loading model from scratch...
-[1;36m(EngineCore_0 pid=315)[0;0m INFO 09-05 19:28:17 [cuda.py:328] Using Flash Attention backend on V1 engine.
-[1;36m(EngineCore_0 pid=315)[0;0m INFO 09-05 19:28:17 [weight_utils.py:296] Using model weights format ['*.safetensors']
-[1;36m(EngineCore_0 pid=315)[0;0m INFO 09-05 19:31:56 [weight_utils.py:312] Time spent downloading weights for mistralai/Mistral-7B-Instruct-v0.1: 218.999934 seconds
-[1;36m(EngineCore_0 pid=315)[0;0m Loading safetensors checkpoint shards:   0% Completed | 0/2 [00:00<?, ?it/s]
-[1;36m(EngineCore_0 pid=315)[0;0m Loading safetensors checkpoint shards:  50% Completed | 1/2 [00:03<00:03,  3.63s/it]
-[1;36m(EngineCore_0 pid=315)[0;0m Loading safetensors checkpoint shards: 100% Completed | 2/2 [00:12<00:00,  6.50s/it]
-[1;36m(EngineCore_0 pid=315)[0;0m Loading safetensors checkpoint shards: 100% Completed | 2/2 [00:12<00:00,  6.07s/it]
-[1;36m(EngineCore_0 pid=315)[0;0m
-[1;36m(EngineCore_0 pid=315)[0;0m INFO 09-05 19:32:09 [default_loader.py:262] Loading weights took 12.79 seconds
-[1;36m(EngineCore_0 pid=315)[0;0m INFO 09-05 19:32:10 [gpu_model_runner.py:2007] Model loading took 13.4967 GiB and 232.719458 seconds
-[1;36m(EngineCore_0 pid=315)[0;0m INFO 09-05 19:32:17 [backends.py:548] Using cache directory: /root/.cache/vllm/torch_compile_cache/bed9ae92d6/rank_0_0/backbone for vLLM's torch.compile
-[1;36m(EngineCore_0 pid=315)[0;0m INFO 09-05 19:32:17 [backends.py:559] Dynamo bytecode transform time: 6.45 s
-[1;36m(EngineCore_0 pid=315)[0;0m INFO 09-05 19:32:20 [backends.py:194] Cache the graph for dynamic shape for later use
-[1;36m(EngineCore_0 pid=315)[0;0m INFO 09-05 19:32:46 [backends.py:215] Compiling a graph for dynamic shape takes 28.56 s
-[1;36m(EngineCore_0 pid=315)[0;0m INFO 09-05 19:32:50 [monitor.py:34] torch.compile takes 35.02 s in total
-[1;36m(EngineCore_0 pid=315)[0;0m /usr/local/lib/python3.12/dist-packages/torch/utils/cpp_extension.py:2356: UserWarning: TORCH_CUDA_ARCH_LIST is not set, all archs for visible cards are included for compilation.
-[1;36m(EngineCore_0 pid=315)[0;0m If this is not desired, please set os.environ['TORCH_CUDA_ARCH_LIST'].
-[1;36m(EngineCore_0 pid=315)[0;0m   warnings.warn(

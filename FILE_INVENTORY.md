@@ -348,50 +348,31 @@
 
 ## ⚠️ Backup & Temporary Files
 
-### `app/main.py.backup`
-**Purpose:** Backup created during ChatStack cleanup (Oct 31, 2025)  
-**Architecture Role:** BACKUP FILE - Contains contaminated code (548 lines of Twilio/WebSocket)  
-**Status:** ❌ **DELETE** - Served its purpose, no longer needed
-
----
-
-### `app/main.py.save`
-**Purpose:** Auto-save or temporary backup file  
-**Architecture Role:** TEMPORARY FILE  
-**Status:** ❌ **DELETE** - Likely duplicate or outdated
+### ✅ CLEANED - All backup files removed (Nov 1, 2025)
 
 ---
 
 ## 📦 Attached Assets & Logs
 
-### `attached_assets/` (90+ files)
-**Purpose:** Miscellaneous chat logs, screenshots, and PDF documents  
-**Architecture Role:** Historical reference and debugging artifacts  
+### `attached_assets/` (6 files - CLEANED)
+**Purpose:** Essential documentation and screenshots  
+**Architecture Role:** Project reference materials  
 **Contains:**
-- PDF: `Chat Gpt‑style Stack_ One‑pager + Fast Api Starter_1757101208972.pdf`
-- Screenshots: `image_*.png` (5 files)
-- Chat logs: 80+ pasted text files from troubleshooting sessions
+- **PDF:** `Chat Gpt‑style Stack_ One‑pager + Fast Api Starter_1757101208972.pdf` (51 KB)
+- **Screenshots:** 6 PNG images showing architecture and UI (Oct 21 - Nov 1)
 
-**Status:** ❌ **CLEANUP RECOMMENDED**
-- Keep: PDF documentation, recent screenshots (last 7 days)
-- Delete: Old pasted chat logs (60+ files from debugging sessions)
-
-**Specific Files to Keep:**
-- PDF documentation (1 file)
-- Recent screenshots showing UI/architecture (last 5-7 files by date)
-
-**Files to Delete:**
-- All `Pasted-*.txt` files (80+ files) - these are ephemeral debugging artifacts
+**Status:** ✅ **CLEANED** (Nov 1, 2025)
+- Removed: 108+ pasted chat log text files (debugging artifacts)
+- Removed: 2 duplicate inventory markdown files
+- Kept: Essential documentation and recent screenshots only
 
 ---
 
-### `update_runpod_proxy.sh`
-**Purpose:** UNKNOWN - Appears to be RunPod configuration script  
-**Architecture Role:** UNCLEAR - Not related to AI-Memory core functionality  
-**Status:** ⚠️ **INVESTIGATE**
-- RunPod is a GPU cloud service
-- This script may be leftover from GPU/LLM experimentation
-- **Action:** Read file to determine if needed, otherwise delete
+### ✅ CLEANED - ChatStack Contamination Removed
+
+**Deleted:** `update_runpod_proxy.sh` (Nov 1, 2025)  
+**Reason:** This was an nginx reverse proxy script for ChatStack's RunPod LLM service  
+**Status:** ✅ Removed - Not related to AI-Memory microservice
 
 ---
 
@@ -402,43 +383,30 @@
 
 ---
 
-## 🧹 Recommended Cleanup Actions
+## ✅ Cleanup Complete (Nov 1, 2025)
 
-### Immediate Deletions (Safe)
+### Files Deleted
 ```bash
-# Remove backup files
-rm app/main.py.backup
-rm app/main.py.save
-
-# Remove old debugging artifacts (80+ pasted chat logs)
-rm attached_assets/Pasted-*.txt
+✅ app/main.py.backup (75 KB - contaminated backup)
+✅ app/main.py.save (61 KB - old save file)
+✅ update_runpod_proxy.sh (ChatStack nginx proxy script - contamination)
+✅ 110+ attached_assets/Pasted-*.txt files (debugging artifacts)
+✅ 2 duplicate REPO_CLEANUP_INVENTORY_*.md files
 ```
 
-### Investigate & Decide
-```bash
-# Check if this is needed
-cat update_runpod_proxy.sh
-# If unrelated to AI-Memory → DELETE
-# If used for production → DOCUMENT in replit.md
-```
-
-### Keep (Active Files)
-- All `app/*.py` files (core application)
-- All `app/middleware/*.py` files (authentication)
-- All `app/prompts/*.txt` files (system prompts)
-- `replit.md`, `V2_ENDPOINTS_READY.md`, `WEEK1_MIGRATION_GUIDE.md`
+### Files Kept (Essential Only)
+- All `app/*.py` files (12 core application files)
+- All `app/middleware/*.py` files (3 authentication files)
+- All `app/prompts/*.txt` files (2 system prompts)
+- `replit.md`, `V2_ENDPOINTS_READY.md`, `WEEK1_MIGRATION_GUIDE.md`, `FILE_INVENTORY.md`
 - `uv.lock` (dependency management)
-- PDF documentation and recent screenshots
+- `attached_assets/` - 1 PDF + 6 screenshots only
 
 ---
 
 ## 🔍 Unclear/Potentially Unused Files
 
-### `update_runpod_proxy.sh`
-**Status:** ⚠️ UNCLEAR PURPOSE
-- Not referenced in any documentation
-- RunPod is GPU cloud service (may be leftover from experiments)
-- **Recommendation:** Investigate contents, likely can be deleted
+### ✅ All unclear files have been identified and removed (Nov 1, 2025)
 
 ---
 
@@ -463,15 +431,14 @@ All files in `app/` folder are within AI-Memory's scope:
 
 ## 📊 File Count Summary
 
-**Core Application:** 12 files (main, models, memory, llm, etc.)  
+**Core Application:** 12 Python files (main, models, memory, llm, etc.)  
 **Middleware:** 3 files (auth, tenant context)  
-**Documentation:** 3 active markdown files  
-**Backups/Temp:** 2 files (RECOMMEND DELETE)  
-**Attached Assets:** 90+ files (RECOMMEND CLEANUP - delete 80+ pasted logs)  
-**Unknown:** 1 file (update_runpod_proxy.sh - INVESTIGATE)
+**Documentation:** 4 markdown files (replit, V2_ENDPOINTS_READY, WEEK1_MIGRATION_GUIDE, FILE_INVENTORY)  
+**Attached Assets:** 7 files (1 PDF + 6 screenshots)  
+**Configuration:** 1 file (uv.lock)
 
-**Total Repository Files:** ~110 files  
-**Recommended After Cleanup:** ~25 essential files
+**Total Essential Files:** ~27 files ✅  
+**Files Removed in Cleanup:** 115+ files (backups, logs, contamination)
 
 ---
 

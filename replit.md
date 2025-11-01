@@ -3,6 +3,30 @@
 ## Overview
 AI-Memory is a shared microservice within the NeuroSphere ecosystem, providing persistent memory storage, AI-driven call summarization, and personality tracking. It significantly improves retrieval speed (under 1 second) by utilizing AI-generated summaries instead of raw conversation data. The service offers REST API endpoints for efficient memory management, context enrichment, and dynamic configuration of AI behaviors. Its purpose is to act as the central brain for AI agents, enabling them to remember past interactions, understand user personalities, and provide highly personalized and contextually relevant responses.
 
+## Recent Changes
+
+### November 1, 2025 - Repository Cleanup & File Inventory ✨
+- ✅ Created comprehensive **FILE_INVENTORY.md** documenting all 27+ essential files
+- ✅ **Removed 115+ unnecessary files:**
+  - Deleted `app/main.py.backup` (75 KB contaminated backup)
+  - Deleted `app/main.py.save` (61 KB old save file)
+  - Deleted `update_runpod_proxy.sh` (ChatStack nginx proxy script - contamination)
+  - Deleted 110+ pasted chat log text files from `attached_assets/`
+  - Deleted 2 duplicate inventory markdown files
+- ✅ **Repository now contains only essential files:**
+  - 12 core Python application files
+  - 3 middleware/authentication files
+  - 4 documentation markdown files
+  - 7 attached assets (1 PDF + 6 screenshots)
+  - 1 dependency lock file (uv.lock)
+- ✅ Added `jwt_utils.py` to repo (shared JWT infrastructure with ChatStack)
+- ✅ Successfully deployed to production (209.38.143.71:8100)
+
+### October 31, 2025 - ChatStack Contamination Removal 🧹
+- ✅ Removed 548 lines of ChatStack phone orchestration code from `app/main.py`
+- ✅ Cleaned unused imports (Twilio WebSocket, OpenAI Realtime, threading)
+- ✅ Verified all 23 AI-Memory endpoints intact after cleanup
+
 ## User Preferences
 Preferred communication style: Simple, everyday language.
 
