@@ -40,3 +40,31 @@ The system employs a microservices architecture, separating concerns into a Phon
 
 ### Databases
 -   **PostgreSQL**: Used with `pgvector` for conversation memory and semantic search.
+
+## Deployment Information
+
+### Production Server (DigitalOcean)
+-   **Server**: 209.38.143.71 (chatbot-server)
+-   **AI-Memory Path**: `/opt/ai-memory`
+-   **Docker Compose File**: `docker-compose-ai.yml` ⚠️ **IMPORTANT: NOT `docker-compose.yml`!**
+
+### Docker Commands (AI-Memory)
+```bash
+# Navigate to ai-memory directory
+cd /opt/ai-memory
+
+# All commands MUST use -f docker-compose-ai.yml
+docker-compose -f docker-compose-ai.yml down
+docker-compose -f docker-compose-ai.yml build --no-cache
+docker-compose -f docker-compose-ai.yml up -d
+
+# Check status
+docker ps | grep ai-memory
+docker logs ai-memory-ai-memory-orchestrator-worker-1 --tail 50
+```
+
+### Standard Deployment Process
+1. **Push to GitHub**: Commit and push changes from Replit
+2. **Pull on Server**: `cd /opt/ai-memory && git pull origin main`
+3. **Rebuild Docker**: `docker-compose -f docker-compose-ai.yml up -d --build`
+4. **Verify**: Check logs and test endpoints
