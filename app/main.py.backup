@@ -326,8 +326,8 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# CORS disabled - Nginx proxy provides security
-# No browser CORS needed for API-only service
+# CORS disabled for WebSocket compatibility with Twilio Media Streams
+# Nginx proxy provides security - no browser CORS needed
 # app.add_middleware(
 #     CORSMiddleware,
 #     allow_origins=["*"],
@@ -1157,3 +1157,547 @@ async def legacy_memory_retrieve(
         logger.error(f"Legacy memory retrieve failed: {e}", exc_info=True)
         return {"success": False, "error": str(e), "memories": []}
 
+def pcmu8k_to_pcm16_8k(b: bytes) -> bytes:
+    """Convert Twilio mulaw to PCM16"""
+    return audioop.ulaw2lin(b, 2)
+
+def upsample_8k_to_24k(pcm16_8k: bytes) -> bytes:
+    """Upsample 8kHz to 24kHz (3x)"""
+    arr = np.frombuffer(pcm16_8k, dtype=np.int16)
+    arr3 = np.repeat(arr, 3)
+    return arr3.tobytes()
+
+def downsample_24k_to_8k(pcm16_24k: bytes) -> bytes:
+    """Downsample 24kHz to 8kHz (1/3)"""
+    arr = np.frombuffer(pcm16_24k, dtype=np.int16)
+    arr8k = arr[::3]
+    return arr8k.tobytes()
+
+def pcm16_8k_to_pcmu8k(pcm16_8k: bytes) -> bytes:
+    """Convert PCM16 to Twilio mulaw"""
+    return audioop.lin2ulaw(pcm16_8k, 2)
+
+class OAIRealtime:
+    """OpenAI Realtime API WebSocket client"""
+    
+    def __init__(self, system_instructions: str, on_audio_delta, on_text_delta, thread_id: Optional[str] = None, user_id: Optional[str] = None, voice: str = "alloy"):
+        self.ws = None
+        self.system_instructions = system_instructions
+        self.on_audio_delta = on_audio_delta
+        self.on_text_delta = on_text_delta
+        self.voice = voice  # OpenAI voice (alloy, echo, shimmer)
+        self.thread_id = thread_id
+        self.user_id = user_id
+        self._connected = threading.Event()
+        self.audio_buffer_size = 0  # Track buffered audio bytes (24kHz PCM16)
+    
+    def _on_open(self, ws):
+        """Configure session when WebSocket opens"""
+        session_update = {
+            "type": "session.update",
+            "session": {
+                "modalities": ["text", "audio"],
+                "instructions": self.system_instructions,
+                "input_audio_format": "pcm16",
+                "output_audio_format": "pcm16",
+                "turn_detection": {"type": "server_vad"},
+                "temperature": 0.7,
+                "voice": self.voice  # Dynamic voice from admin panel
+            }
+        }
+        ws.send(json.dumps(session_update))
+        logger.info(f"✅ OpenAI Realtime session configured with voice: {self.voice}")
+        
+        # Trigger immediate greeting - tell AI to start speaking first
+        # Get the appropriate greeting from session instructions
+        greeting_instruction = "Start the call by speaking first. Say your greeting exactly as specified in your GREETING GUIDANCE section. Speak in English."
+        
+        response_create = {
+            "type": "response.create",
+            "response": {
+                "modalities": ["text", "audio"],
+                "instructions": greeting_instruction
+            }
+        }
+        ws.send(json.dumps(response_create))
+        logger.info(f"📞 Triggered AI greeting: {greeting_instruction}")
+        
+        self._connected.set()
+    
+    def _on_message(self, ws, msg):
+        """Handle incoming messages from OpenAI"""
+        try:
+            ev = json.loads(msg)
+        except Exception:
+            return
+        
+        event_type = ev.get("type")
+        
+        # Log ALL events for debugging
+        logger.info(f"🔔 OpenAI event: {event_type}")
+        
+        if event_type == "response.audio.delta":
+            b64 = ev.get("delta", "")
+            if b64:
+                pcm24 = base64.b64decode(b64)
+                logger.info(f"🔊 Received audio delta: {len(pcm24)} bytes")
+                self.on_audio_delta(pcm24)
+        
+        elif event_type == "response.text.delta":
+            delta = ev.get("delta", "")
+            if delta:
+                self.on_text_delta(delta)
+        
+        elif event_type == "response.text.done":
+            # Text response complete (not used in audio mode)
+            text = ev.get("text", "")
+            if text:
+                logger.info(f"📝 OpenAI text response: {text[:100]}...")
+        
+        elif event_type == "session.created":
+            logger.info(f"✅ OpenAI session created: {ev.get('session', {}).get('id')}")
+        
+        elif event_type == "input_audio_buffer.speech_started":
+            logger.info("🎤 User started speaking")
+        
+        elif event_type == "input_audio_buffer.speech_stopped":
+            logger.info("🎤 User stopped speaking")
+            self.audio_buffer_size = 0  # Reset buffer after speech
+        
+        elif event_type == "conversation.item.created":
+            # Capture user or assistant messages
+            item = ev.get("item", {})
+            role = item.get("role")
+            if role in ("user", "assistant"):
+                content_list = item.get("content", [])
+                for content in content_list:
+                    if content.get("type") == "input_text":
+                        text = content.get("text", "")
+                        logger.info(f"💬 User said: {text}")
+                        # Store in thread history
+                        if hasattr(self, 'thread_id') and self.thread_id:
+                            THREAD_HISTORY[self.thread_id].append(("user", text))
+                    elif content.get("type") == "text":
+                        text = content.get("text", "")
+                        logger.info(f"🤖 Assistant said: {text}")
+                        if hasattr(self, 'thread_id') and self.thread_id:
+                            THREAD_HISTORY[self.thread_id].append(("assistant", text))
+        
+        elif event_type == "response.audio_transcript.done":
+            # Capture assistant's spoken response transcript
+            transcript = ev.get("transcript", "")
+            if transcript:
+                logger.info(f"🗣️ Assistant transcript: {transcript}")
+                if hasattr(self, 'thread_id') and self.thread_id:
+                    THREAD_HISTORY[self.thread_id].append(("assistant", transcript))
+        
+        elif event_type == "conversation.item.input_audio_transcription.completed":
+            # Capture user's spoken input transcript
+            transcript = ev.get("transcript", "")
+            if transcript:
+                logger.info(f"🎤 User transcript: {transcript}")
+                if hasattr(self, 'thread_id') and self.thread_id:
+                    THREAD_HISTORY[self.thread_id].append(("user", transcript))
+        
+        elif event_type == "response.done":
+            logger.info("✅ OpenAI response complete")
+            self.audio_buffer_size = 0  # Reset buffer after response
+            
+            # Save thread history to database after each response
+            if hasattr(self, 'thread_id') and self.thread_id and hasattr(self, 'user_id') and self.user_id:
+                try:
+                    mem_store = MemoryStore()
+                    save_thread_history(self.thread_id, mem_store, self.user_id)
+                    
+                    # ✅ Extract and save structured facts from recent conversation
+                    # Get last user message from thread history for memory extraction
+                    try:
+                        history = THREAD_HISTORY.get(self.thread_id, [])
+                        if history:
+                            # Check last 5 messages for important information
+                            recent_messages = list(history)[-5:]
+                            for role, content in recent_messages:
+                                if role == "user":
+                                    try:
+                                        if should_remember(content):
+                                            logger.info(f"🧠 Extracting memories from: {content[:100]}...")
+                                            items = extract_carry_kit_items(content)
+                                            for item in items:
+                                                try:
+                                                    memory_id = mem_store.write(
+                                                        memory_type=item["type"],
+                                                        key=item["key"],
+                                                        value=item["value"],
+                                                        user_id=self.user_id,
+                                                        scope="user",
+                                                        ttl_days=item.get("ttl_days", 365)
+                                                    )
+                                                    logger.info(f"💾 Saved structured memory: {item['type']}:{item['key']} -> {memory_id}")
+                                                except Exception as e:
+                                                    logger.error(f"Failed to save structured memory: {e}")
+                                    except Exception as e:
+                                        logger.error(f"Memory extraction error: {e}")
+                    except Exception as e:
+                        logger.error(f"Memory processing error: {e}")
+                except Exception as e:
+                    logger.warning(f"Failed to save thread history: {e}")
+        
+        elif event_type == "error":
+            error_msg = ev.get("error", {}).get("message", "Unknown error")
+            logger.error(f"❌ OpenAI error: {error_msg}")
+    
+    def _on_error(self, ws, err):
+        logger.error(f"OpenAI WebSocket error: {err}")
+    
+    def _on_close(self, ws, *args):
+        """Handle WebSocket close (compatible with any websocket-client version)"""
+        if len(args) >= 2:
+            logger.info(f"OpenAI WebSocket closed: code={args[0]}, reason={args[1]}")
+        elif len(args) == 1:
+            logger.info(f"OpenAI WebSocket closed: {args[0]}")
+        else:
+            logger.info("OpenAI WebSocket closed")
+    
+    def connect(self):
+        """Establish WebSocket connection to OpenAI Realtime API"""
+        openai_key = get_secret("OPENAI_API_KEY")
+        model = get_setting("realtime_model", "gpt-realtime")
+        realtime_url = f"wss://api.openai.com/v1/realtime?model={model}"
+        
+        headers = [
+            f"Authorization: Bearer {openai_key}",
+            "OpenAI-Beta: realtime=v1"
+        ]
+        
+        self.ws = WebSocketApp(
+            realtime_url,
+            header=headers,
+            on_open=self._on_open,
+            on_message=self._on_message,
+            on_error=self._on_error,
+            on_close=self._on_close
+        )
+        
+        threading.Thread(target=self.ws.run_forever, daemon=True).start()
+        self._connected.wait(timeout=5)
+    
+    def send_pcm16_24k(self, chunk: bytes):
+        """Send audio chunk to OpenAI"""
+        if not self.ws:
+            return
+        ev = {
+            "type": "input_audio_buffer.append",
+            "audio": base64.b64encode(chunk).decode("ascii")
+        }
+        self.ws.send(json.dumps(ev))
+        self.audio_buffer_size += len(chunk)
+    
+    def commit_and_respond(self):
+        """Commit audio buffer and request response (only if >= 100ms buffered)"""
+        if not self.ws:
+            return
+        
+        # 100ms at 24kHz PCM16 = 24000 samples/sec * 0.1 sec * 2 bytes = 4800 bytes
+        MIN_BUFFER_SIZE = 4800
+        
+        if self.audio_buffer_size >= MIN_BUFFER_SIZE:
+            self.ws.send(json.dumps({"type": "input_audio_buffer.commit"}))
+            self.ws.send(json.dumps({"type": "response.create"}))
+            self.audio_buffer_size = 0  # Reset after commit
+        else:
+            logger.debug(f"⏸️ Skipping commit - buffer too small ({self.audio_buffer_size} < {MIN_BUFFER_SIZE} bytes)")
+    
+    def close(self):
+        """Close the WebSocket connection"""
+        if self.ws:
+            self.ws.close()
+
+@app.websocket("/phone/media-stream")
+async def media_stream_endpoint(websocket: WebSocket):
+    """Twilio Media Streams WebSocket endpoint"""
+    await websocket.accept()
+    logger.info("🌐 Twilio Media Stream connected")
+    
+    # Capture the event loop for use in threaded callbacks
+    event_loop = asyncio.get_event_loop()
+    
+    stream_sid = None
+    oai = None
+    last_media_ts = time.time()
+    
+    def on_oai_audio(pcm24):
+        """Handle audio from OpenAI - send to Twilio"""
+        logger.info(f"📤 Sending audio to Twilio: {len(pcm24)} bytes PCM24 -> mulaw")
+        pcm8 = downsample_24k_to_8k(pcm24)
+        mulaw = pcm16_8k_to_pcmu8k(pcm8)
+        payload = base64.b64encode(mulaw).decode("ascii")
+        
+        if websocket.application_state == WebSocketState.CONNECTED:
+            # Schedule coroutine in the FastAPI event loop from this thread
+            asyncio.run_coroutine_threadsafe(
+                websocket.send_text(json.dumps({
+                    "event": "media",
+                    "streamSid": stream_sid,
+                    "media": {"payload": payload}
+                })),
+                event_loop
+            )
+            logger.info(f"✅ Audio sent to Twilio ({len(payload)} base64 chars)")
+        else:
+            logger.warning("⚠️ WebSocket not connected, skipping audio send")
+    
+    def on_oai_text(delta):
+        """Handle text transcript from OpenAI"""
+        logger.info(f"📝 OpenAI: {delta}")
+    
+    def on_tts_needed(text):
+        """Generate ElevenLabs audio and stream to Twilio"""
+        try:
+            logger.info(f"🎙️ Generating ElevenLabs TTS for: {text[:100]}...")
+            
+            # Get voice_id from admin panel
+            voice_id = get_admin_setting("voice_id", "FGY2WhTYpPnrIDTdsKH5")
+            logger.info(f"🔊 Using ElevenLabs voice_id: {voice_id}")
+            
+            # Import ElevenLabs client
+            from elevenlabs.client import ElevenLabs
+            from elevenlabs import VoiceSettings
+            
+            client = ElevenLabs(api_key=get_secret("ELEVENLABS_API_KEY"))
+            
+            # Stream audio from ElevenLabs
+            audio_stream = client.text_to_speech.convert(
+                voice_id=voice_id,
+                text=text,
+                model_id="eleven_turbo_v2_5",  # Fast model for real-time
+                output_format="pcm_24000"  # 24kHz PCM16 to match OpenAI
+            )
+            
+            # Stream to Twilio
+            for chunk in audio_stream:
+                if chunk:
+                    # Chunk is already 24kHz PCM16 from ElevenLabs
+                    pcm8 = downsample_24k_to_8k(chunk)
+                    mulaw = pcm16_8k_to_pcmu8k(pcm8)
+                    payload = base64.b64encode(mulaw).decode("ascii")
+                    
+                    if websocket.application_state == WebSocketState.CONNECTED:
+                        asyncio.run_coroutine_threadsafe(
+                            websocket.send_text(json.dumps({
+                                "event": "media",
+                                "streamSid": stream_sid,
+                                "media": {"payload": payload}
+                            })),
+                            event_loop
+                        )
+            
+            logger.info("✅ ElevenLabs audio streaming complete")
+            
+        except Exception as e:
+            logger.error(f"❌ ElevenLabs TTS failed: {e}")
+    
+    try:
+        while True:
+            msg = await websocket.receive_text()
+            ev = json.loads(msg)
+            event_type = ev.get("event")
+            
+            if event_type == "start":
+                stream_sid = ev["start"]["streamSid"]
+                custom_params = ev["start"].get("customParameters", {})
+                user_id = custom_params.get("user_id")
+                is_callback = custom_params.get("is_callback") == "True"
+                
+                # ✅ Create stable thread_id for conversation continuity
+                thread_id = f"user_{user_id}" if user_id else None
+                
+                logger.info(f"📞 Stream started: {stream_sid}, User: {user_id}, Thread: {thread_id}, Callback: {is_callback}")
+                
+                # Build system instructions with memory context
+                try:
+                    mem_store = MemoryStore()
+                    http_mem_store = HTTPMemoryStore()  # 🚀 V2: HTTP client for AI-Memory service
+                    
+                    # ✅ CRITICAL: Load thread history from database for conversation continuity
+                    if thread_id and user_id:
+                        load_thread_history(thread_id, mem_store, user_id)
+                        logger.info(f"🔄 Loaded thread history for {thread_id}: {len(THREAD_HISTORY.get(thread_id, []))} messages")
+                    
+                    # 🚀 V2: Fetch enriched context (call summaries + personality profile) - 10x faster!
+                    enriched_context = ""
+                    if user_id:
+                        try:
+                            # TODO: Multi-tenant support - derive customer_id from incoming phone number
+                            # For now, Peterson Insurance is the only customer (customer_id=1)
+                            # Future: Map Twilio "To" number → customer_id via phone_number_mappings table
+                            customer_id = 1  # Peterson Insurance
+                            jwt_token = generate_memory_token(customer_id=customer_id)
+                            enriched_context = http_mem_store.get_enriched_context_v2(user_id, jwt_token)
+                            if enriched_context:
+                                logger.info(f"✅ V2 enriched context loaded: {len(enriched_context)} chars")
+                            else:
+                                logger.warning(f"⚠️ V2 enriched context empty - new caller or no history")
+                        except Exception as e:
+                            logger.error(f"❌ Failed to get V2 enriched context: {e}")
+                            enriched_context = ""
+                    
+                    # Load base system prompt
+                    system_prompt_path = "app/prompts/system_sam.txt"
+                    try:
+                        with open(system_prompt_path, "r") as f:
+                            instructions = f.read()
+                    except FileNotFoundError:
+                        instructions = "You are Samantha for Peterson Family Insurance. Be concise, warm, and human."
+                    
+                    # Add identity and greeting context - use get_admin_setting to query ai-memory directly
+                    agent_name = get_admin_setting("agent_name", "Betsy")
+                    instructions += f"\n\n=== YOUR IDENTITY ===\nYour name is {agent_name} and you work for Peterson Family Insurance Agency."
+                    
+                    # Add conversation history context
+                    if thread_id and THREAD_HISTORY.get(thread_id):
+                        history = list(THREAD_HISTORY[thread_id])
+                        if history:
+                            instructions += f"\n\n=== CONVERSATION HISTORY ===\nThis is a continuing conversation. Previous messages:\n"
+                            for role, content in history[-10:]:  # Last 5 turns
+                                instructions += f"{role}: {content[:200]}...\n" if len(content) > 200 else f"{role}: {content}\n"
+                    
+                    # Add caller context with V2 enriched memory
+                    if is_callback and enriched_context:
+                        # 🚀 V2: Existing caller with enriched context (call summaries + personality)
+                        greeting_template = get_admin_setting("existing_user_greeting", 
+                                                             f"Hi, this is {agent_name} from Peterson Family Insurance Agency. How can I help you today?")
+                        greeting = greeting_template.replace("{agent_name}", agent_name)
+                        instructions += f"\n\n=== GREETING GUIDANCE ===\nThis is a returning caller. Use this greeting style: '{greeting}'"
+                        
+                        # 🚀 V2: Inject enriched context (call summaries + personality profile)
+                        instructions += "\n\n=== YOUR_MEMORY_OF_THIS_CALLER ===\n"
+                        instructions += enriched_context
+                        instructions += "\n=== END_MEMORY ===\n"
+                        
+                        logger.info(f"🚀 V2 enriched context injected: {len(enriched_context)} chars")
+                    else:
+                        # New caller or no enriched context available
+                        import datetime
+                        hour = datetime.datetime.now().hour
+                        if hour < 12:
+                            time_greeting = "Good morning"
+                        elif hour < 18:
+                            time_greeting = "Good afternoon"
+                        else:
+                            time_greeting = "Good evening"
+                        
+                        greeting_template = get_admin_setting("new_caller_greeting", 
+                                                             f"{{time_greeting}}! This is {agent_name} from Peterson Family Insurance Agency. How can I help you?")
+                        greeting = greeting_template.replace("{time_greeting}", time_greeting).replace("{agent_name}", agent_name)
+                        instructions += f"\n\n=== GREETING GUIDANCE ===\nThis is a new caller. Use this greeting: '{greeting}'"
+                        
+                        if enriched_context:
+                            # Has enriched context but not a callback (edge case)
+                            instructions += "\n\n=== YOUR_MEMORY_OF_THIS_CALLER ===\n"
+                            instructions += enriched_context
+                            instructions += "\n=== END_MEMORY ===\n"
+                            logger.info(f"🚀 V2 enriched context injected (not callback): {len(enriched_context)} chars")
+                
+                except Exception as e:
+                    logger.error(f"Failed to load memory context: {e}")
+                    instructions = "You are Samantha for Peterson Family Insurance. Be concise, warm, and human."
+                
+                # Get voice from admin panel (alloy, echo, shimmer)
+                openai_voice = get_admin_setting("openai_voice", "alloy")
+                logger.info(f"🎤 Using OpenAI voice from admin panel: {openai_voice}")
+                
+                # Connect to OpenAI with thread tracking
+                oai = OAIRealtime(
+                    instructions, 
+                    on_oai_audio, 
+                    on_oai_text, 
+                    thread_id=thread_id, 
+                    user_id=user_id,
+                    voice=openai_voice
+                )
+                oai.connect()
+                logger.info(f"🔗 OpenAI client initialized with thread_id={thread_id}, user_id={user_id}")
+            
+            elif event_type == "media":
+                # Audio from Twilio (mulaw 8kHz base64)
+                b64 = ev["media"]["payload"]
+                mulaw = base64.b64decode(b64)
+                pcm16_8k = pcmu8k_to_pcm16_8k(mulaw)
+                pcm16_24k = upsample_8k_to_24k(pcm16_8k)
+                
+                if oai:
+                    oai.send_pcm16_24k(pcm16_24k)
+                last_media_ts = time.time()
+            
+            elif event_type == "mark":
+                # Mark event - commit audio buffer
+                if oai:
+                    oai.commit_and_respond()
+            
+            elif event_type == "stop":
+                logger.info(f"📞 Stream stopped: {stream_sid}")
+                break
+            
+            # Auto-commit on pause (rudimentary VAD assist)
+            if (time.time() - last_media_ts) > 0.7 and oai:
+                oai.commit_and_respond()
+                last_media_ts = time.time()
+    
+    except WebSocketDisconnect:
+        logger.info("Twilio disconnected")
+    except Exception as e:
+        logger.exception(f"Media stream error: {e}")
+    finally:
+        # 🚀 V2: Process completed call - generate summary & extract personality
+        if stream_sid and user_id:
+            try:
+                thread_id = f"user_{user_id}"
+                conversation_history = list(THREAD_HISTORY.get(thread_id, []))
+                
+                if conversation_history and len(conversation_history) >= 2:
+                    logger.info(f"📊 Processing completed call for user {user_id}: {len(conversation_history)} messages")
+                    
+                    # Call AI-Memory V2 endpoint to process the call
+                    customer_id = 1  # TODO: Map from phone number
+                    jwt_token = generate_memory_token(customer_id=customer_id)
+                    
+                    http_mem = HTTPMemoryStore()
+                    response = http_mem.session.post(
+                        f"{http_mem.ai_memory_url}/v2/process-call",
+                        json={
+                            "conversation_history": [{"role": role, "content": content} for role, content in conversation_history],
+                            "user_id": user_id,
+                            "thread_id": thread_id
+                        },
+                        headers={
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {jwt_token}"
+                        },
+                        timeout=10
+                    )
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        if result.get("success"):
+                            logger.info(f"✅ V2 call processing complete: summary_id={result.get('summary_id')}, personality_id={result.get('personality_id')}")
+                        else:
+                            logger.error(f"❌ V2 call processing failed: {result.get('error')}")
+                    else:
+                        logger.error(f"❌ V2 process-call endpoint returned {response.status_code}: {response.text}")
+                else:
+                    logger.info(f"⏭️ Skipping V2 processing - conversation too short ({len(conversation_history)} messages)")
+                    
+            except Exception as e:
+                logger.error(f"❌ Failed to process completed call: {e}", exc_info=True)
+        
+        if oai:
+            oai.close()
+        logger.info("🔌 WebSocket closed")
+
+# -----------------------------------------------------------------------------
+# Entrypoint (dev)
+# -----------------------------------------------------------------------------
+if __name__ == "__main__":
+    import uvicorn
+    port = int(get_setting("port", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port, log_level="info")
