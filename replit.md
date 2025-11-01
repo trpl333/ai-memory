@@ -6,26 +6,36 @@ AI-Memory is a shared microservice providing persistent memory storage, call sum
 ## Recent Changes
 
 ### October 31, 2025 - **CRITICAL FIX**: V2 Memory Integration - Phone Calls Now Remember Callers! 🚀
-**Issue:** Phone calls started mid-sentence with NO caller recognition despite V2 enriched context endpoint working perfectly in manual tests!
+**Issue #1:** Phone calls started mid-sentence with NO caller recognition despite V2 enriched context endpoint working perfectly in manual tests!
+**Issue #2:** Structured profile remained empty (0 memories) despite 480 STRING memories saved - name, wife's name, birthday, cars NOT extracted!
 
 **Root Cause Discovered:**
-- V2 enriched context endpoint (`/v2/context/enriched`) was built and tested ✅
-- BUT orchestrator phone call initialization still used OLD V1 memory retrieval! ❌
-- OLD code fetched 800+ scattered memories, normalized into JSON template (2-3 seconds)
-- NEW V2 endpoint was NEVER called during actual phone calls
+1. V2 enriched context endpoint (`/v2/context/enriched`) was built and tested ✅
+2. BUT orchestrator phone call initialization still used OLD V1 memory retrieval! ❌
+3. OLD code fetched 800+ scattered memories, normalized into JSON template (2-3 seconds)
+4. NEW V2 endpoint was NEVER called during actual phone calls
+5. **CRITICAL:** `/v2/process-call` endpoint was NEVER called when calls ended! ❌
+6. Call summaries, personality extraction, and structured profile updates were NEVER triggered!
 
 **Fix Applied:**
 1. ✅ Added `get_enriched_context_v2()` to `app/http_memory.py` with JWT authentication
-2. ✅ Updated `app/main.py` phone call initialization (lines 1518-1602):
+2. ✅ Updated `app/main.py` phone call initialization (lines 1533-1602):
    - Import `HTTPMemoryStore` and `generate_memory_token`
    - Replace OLD V1 memory retrieval with V2 enriched context API call
    - Inject enriched context (call summaries + personality profile) into AI instructions
 3. ✅ Removed 70+ lines of OLD V1 normalization code
-4. ✅ Performance: <1 second retrieval vs 2-3 seconds with V1
+4. ✅ **NEW:** Added V2 call processing to `finally` block (lines 1657-1702):
+   - Calls `/v2/process-call` endpoint when call disconnects
+   - Generates call summary using AI
+   - Extracts personality metrics (Big 5 traits, communication style)
+   - Updates structured profile (name, contacts, vehicles, preferences)
+5. ✅ Performance: <1 second retrieval vs 2-3 seconds with V1
 
 **Code Changes:**
 - `app/http_memory.py`: Added `get_enriched_context_v2(user_id, jwt_token)` function
-- `app/main.py`: Replaced lines 1528-1606 with V2 enriched context integration
+- `app/main.py`: 
+  - Lines 1533-1602: Replaced V1 memory retrieval with V2 enriched context
+  - Lines 1657-1702: Added V2 call processing on disconnect
 
 **Current Limitation:**
 - `customer_id=1` hard-coded for Peterson Insurance (only customer)

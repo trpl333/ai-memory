@@ -1652,6 +1652,48 @@ async def media_stream_endpoint(websocket: WebSocket):
     except Exception as e:
         logger.exception(f"Media stream error: {e}")
     finally:
+        # 🚀 V2: Process completed call - generate summary & extract personality
+        if stream_sid and user_id:
+            try:
+                thread_id = f"user_{user_id}"
+                conversation_history = list(THREAD_HISTORY.get(thread_id, []))
+                
+                if conversation_history and len(conversation_history) >= 2:
+                    logger.info(f"📊 Processing completed call for user {user_id}: {len(conversation_history)} messages")
+                    
+                    # Call AI-Memory V2 endpoint to process the call
+                    customer_id = 1  # TODO: Map from phone number
+                    jwt_token = generate_memory_token(customer_id=customer_id)
+                    
+                    http_mem = HTTPMemoryStore()
+                    response = http_mem.session.post(
+                        f"{http_mem.ai_memory_url}/v2/process-call",
+                        json={
+                            "conversation_history": [{"role": role, "content": content} for role, content in conversation_history],
+                            "user_id": user_id,
+                            "thread_id": thread_id
+                        },
+                        headers={
+                            "Content-Type": "application/json",
+                            "Authorization": f"Bearer {jwt_token}"
+                        },
+                        timeout=10
+                    )
+                    
+                    if response.status_code == 200:
+                        result = response.json()
+                        if result.get("success"):
+                            logger.info(f"✅ V2 call processing complete: summary_id={result.get('summary_id')}, personality_id={result.get('personality_id')}")
+                        else:
+                            logger.error(f"❌ V2 call processing failed: {result.get('error')}")
+                    else:
+                        logger.error(f"❌ V2 process-call endpoint returned {response.status_code}: {response.text}")
+                else:
+                    logger.info(f"⏭️ Skipping V2 processing - conversation too short ({len(conversation_history)} messages)")
+                    
+            except Exception as e:
+                logger.error(f"❌ Failed to process completed call: {e}", exc_info=True)
+        
         if oai:
             oai.close()
         logger.info("🔌 WebSocket closed")
